@@ -1,0 +1,22 @@
+[
+  {
+    "id": "1",
+    "title": "Hướng dẫn cài Node.js",
+    "content": "Cài Node.js trên Windows bằng trình cài đặt chính thức từ nodejs.org. Sau khi cài, kiểm tra bằng 'node -v' và 'npm -v'."
+  },
+  {
+    "id": "2",
+    "title": "FlexSearch là gì",
+    "content": "FlexSearch là thư viện tìm kiếm full-text cho JavaScript, rất nhanh và nhẹ, có thể chạy trên client và server."
+  },
+  {
+    "id": "3",
+    "title": "Học JavaScript căn bản",
+    "content": "JavaScript là ngôn ngữ lập trình chạy trên trình duyệt và server (Node.js). Học cú pháp, hàm, promise/async và DOM để bắt đầu."
+  },
+  {
+    "id": "4",
+    "title": "Triết lý thiết kế REST",
+    "content": "REST là kiến trúc để thiết kế API, sử dụng HTTP verbs, đường dẫn rõ ràng và trả về trạng thái hợp lý."
+  }
+]
