@@ -137,10 +137,10 @@
       }
 
       try {
-        const res = await fetch(\`/search?q=\${encodeURIComponent(q)}\`);
+        const res = await fetch(`/search?q=${encodeURIComponent(q)}`);
         const data = await res.json();
 
-        statsDiv.innerHTML = \`<p><b>\${data.total}</b> kết quả cho "<i>\${q}</i>"</p>\`;
+        statsDiv.innerHTML =`<p><b>\${data.total}</b> kết quả cho "<i>\${q}</i>"</p>\`;
 
         resultsDiv.innerHTML = data.results.map(doc => \`
           <div class="result">
@@ -166,7 +166,8 @@
     }
 
     function escapeRegex(str) {
-      return str.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&");
+      return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
     }
 
     // ==============================
