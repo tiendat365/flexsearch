@@ -3,20 +3,235 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>FlexSearch Demo</title>
+  <title>🔍 FlexSearch Demo - Nâng cấp</title>
+
+  <!-- ================== CSS ================== -->
   <style>
-    body { font-family: Arial, sans-serif; max-width: 800px; margin: 2rem auto; }
-    input[type="search"] { width: 100%; padding: .5rem; font-size: 1.1rem; }
-    .result { border-bottom: 1px solid #eee; padding: .5rem 0; }
-    .title { font-weight: bold }
+    /* ===== Bố cục & chung ===== */
+    body {
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: #fafafa;
+      max-width: 800px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      color: #333;
+      line-height: 1.5;
+    }
+
+    h1, h2 {
+      color: #1e88e5;
+      text-align: center;
+    }
+
+    /* ===== Ô tìm kiếm ===== */
+    .search-area {
+      margin-bottom: 1.5rem;
+      text-align: center;
+    }
+
+    input[type="search"], 
+    input[type="text"], 
+    input[type="number"], 
+    textarea {
+      width: 100%;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      margin-top: 6px;
+      font-size: 1rem;
+    }
+
+    /* ===== Nút ===== */
+    button {
+      padding: 6px 10px;
+      border: none;
+      border-radius: 6px;
+      background-color: #1e88e5;
+      color: white;
+      cursor: pointer;
+      margin-right: 6px;
+    }
+
+    button:hover {
+      background-color: #1565c0;
+    }
+
+    /* ===== Kết quả tìm kiếm ===== */
+    .result {
+      background: #fff;
+      border: 1px solid #eee;
+      border-radius: 8px;
+      padding: 10px 15px;
+      margin-bottom: 10px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .result .title {
+      font-weight: bold;
+      color: #1565c0;
+    }
+
+    .result small {
+      color: #888;
+    }
+
+    mark {
+      background: yellow;
+      font-weight: bold;
+    }
+
+    /* ===== Form thêm tài liệu ===== */
+    .add-form {
+      background: #fff;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    hr {
+      margin: 2rem 0;
+      border: 0;
+      border-top: 1px solid #ddd;
+    }
   </style>
 </head>
+
 <body>
-  <h1>FlexSearch Demo (tiếng Việt)</h1>
-  <p>Nhập từ khóa vào ô dưới để thử tìm kiếm trên dữ liệu mẫu.</p>
-  <input id="q" type="search" placeholder="Nhập từ khóa..." />
+  <h1>🔍 Tìm kiếm tài liệu (FlexSearch)</h1>
+  <p style="text-align:center;">Nhập từ khóa để tìm trong tập dữ liệu. Hỗ trợ CRUD (Thêm / Sửa / Xóa).</p>
+
+  <!-- Ô tìm kiếm -->
+  <div class="search-area">
+    <input id="q" type="search" placeholder="Nhập từ khóa..." oninput="searchDocs()" />
+    <div id="stats"></div>
+  </div>
+
+  <!-- Kết quả tìm kiếm -->
   <div id="results"></div>
 
-  <script src="/app.js"></script>
+  <hr>
+
+  <!-- Form thêm tài liệu -->
+  <h2>➕ Thêm tài liệu mới</h2>
+  <div class="add-form">
+    <input id="id" type="number" placeholder="ID" />
+    <input id="title" type="text" placeholder="Tiêu đề" />
+    <textarea id="content" placeholder="Nội dung"></textarea>
+    <button onclick="addDoc()">Thêm</button>
+  </div>
+
+  <!-- ================== JAVASCRIPT ================== -->
+  <script>
+    // ==============================
+    // 🚀 HÀM TÌM KIẾM
+    // ==============================
+    async function searchDocs() {
+      const q = document.getElementById("q").value.trim();
+      const resultsDiv = document.getElementById("results");
+      const statsDiv = document.getElementById("stats");
+
+      if (!q) {
+        resultsDiv.innerHTML = "";
+        statsDiv.innerHTML = "";
+        return;
+      }
+
+      try {
+        const res = await fetch(\`/search?q=\${encodeURIComponent(q)}\`);
+        const data = await res.json();
+
+        statsDiv.innerHTML = \`<p><b>\${data.total}</b> kết quả cho "<i>\${q}</i>"</p>\`;
+
+        resultsDiv.innerHTML = data.results.map(doc => \`
+          <div class="result">
+            <div class="title">\${highlight(doc.title, q)}</div>
+            <small>ID: \${doc.id}</small>
+            <p>\${highlight(doc.content.slice(0, 200), q)}...</p>
+            <button onclick="editDoc(\${doc.id})">✏️ Sửa</button>
+            <button onclick="deleteDoc(\${doc.id})">🗑️ Xóa</button>
+          </div>
+        \`).join("");
+      } catch (err) {
+        console.error("Lỗi khi tìm kiếm:", err);
+      }
+    }
+
+    // ==============================
+    // 🟡 HIGHLIGHT TỪ KHÓA
+    // ==============================
+    function highlight(text, query) {
+      if (!query) return text;
+      const regex = new RegExp(\`(\${escapeRegex(query)})\`, "gi");
+      return text.replace(regex, "<mark>$1</mark>");
+    }
+
+    function escapeRegex(str) {
+      return str.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&");
+    }
+
+    // ==============================
+    // ➕ THÊM TÀI LIỆU MỚI
+    // ==============================
+    async function addDoc() {
+      const id = document.getElementById("id").value;
+      const title = document.getElementById("title").value;
+      const content = document.getElementById("content").value;
+
+      if (!id || !title || !content) {
+        alert("Vui lòng nhập đủ ID, tiêu đề và nội dung!");
+        return;
+      }
+
+      const res = await fetch("/api/add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, title, content })
+      });
+      const data = await res.json();
+
+      alert(data.message || data.error);
+      clearForm();
+      searchDocs();
+    }
+
+    // ==============================
+    // ✏️ SỬA TÀI LIỆU
+    // ==============================
+    async function editDoc(id) {
+      const newTitle = prompt("Nhập tiêu đề mới:");
+      const newContent = prompt("Nhập nội dung mới:");
+      if (!newTitle || !newContent) return;
+
+      const res = await fetch(\`/api/update/\${id}\`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: newTitle, content: newContent })
+      });
+      const data = await res.json();
+
+      alert(data.message || data.error);
+      searchDocs();
+    }
+
+    // ==============================
+    // 🗑️ XÓA TÀI LIỆU
+    // ==============================
+    async function deleteDoc(id) {
+      if (!confirm("Xóa tài liệu này?")) return;
+      const res = await fetch(\`/api/remove/\${id}\`, { method: "DELETE" });
+      const data = await res.json();
+      alert(data.message || data.error);
+      searchDocs();
+    }
+
+    // ==============================
+    // 🧹 DỌN FORM
+    // ==============================
+    function clearForm() {
+      document.getElementById("id").value = "";
+      document.getElementById("title").value = "";
+      document.getElementById("content").value = "";
+    }
+  </script>
 </body>
 </html>
