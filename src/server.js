@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const fs = require('fs').promises;
 const FlexSearch = require('flexsearch');
 const mongoose = require('mongoose');
 require('dotenv').config(); // Tải các biến môi trường từ file .env
@@ -15,11 +16,6 @@ app.use(express.json());
 
 // === KẾT NỐI VỚI MONGODB ===
 // Sử dụng chuỗi kết nối từ file .env
-const dbURI = process.env.MONGODB_URI || "mongodb://localhost:27017/flexsearchDB";
-mongoose.connect(dbURI)
-    .then(() => console.log('✅ Đã kết nối thành công với MongoDB!'))
-    .catch(err => console.error('❌ Lỗi kết nối MongoDB:', err));
-
 // === ĐỊNH NGHĨA CẤU TRÚC DỮ LIỆU (SCHEMA & MODEL) ===
 const documentSchema = new mongoose.Schema({
     title: { type: String, required: true },
@@ -27,16 +23,39 @@ const documentSchema = new mongoose.Schema({
 }, { timestamps: true }); // Thêm timestamps để biết khi nào tài liệu được tạo/cập nhật
 const Document = mongoose.model('Document', documentSchema);
 
+// Danh sách các từ dừng phổ biến trong tiếng Việt
+const vietnameseStopwords = [
+    "và", "là", "của", "trong", "cho", "có", "được", "một", "khi", "từ",
+    "đến", "với", "để", "các", "như", "này", "đã", "về", "thì", "ở"
+];
+
 // === KHỞI TẠO INDEX CỦA FLEXSEARCH ===
 const index = new FlexSearch.Document({
     document: {
         id: "_id",
         index: ["title", "content"]
     },
+    // Thêm bộ lọc từ dừng
+    filter: vietnameseStopwords,
     tokenize: "full",
     encoder: 'icase'
 });
 
+// === HÀM THÊM DỮ LIỆU MẪU (SEEDING) ===
+async function seedDatabase() {
+    try {
+        const count = await Document.countDocuments();
+        if (count === 0) {
+            console.log('🌱 Cơ sở dữ liệu trống, đang thêm dữ liệu mẫu...');
+            const data = await fs.readFile('./data/documents.json', 'utf-8');
+            const sampleDocs = JSON.parse(data).map(({ id, ...rest }) => rest); // Bỏ trường 'id' cũ
+            await Document.insertMany(sampleDocs);
+            console.log('✅ Đã thêm dữ liệu mẫu thành công.');
+        }
+    } catch (error) {
+        console.error('❌ Lỗi khi thêm dữ liệu mẫu:', error);
+    }
+}
 // === HÀM ĐỒNG BỘ DỮ LIỆU TỪ DB VÀO INDEX ===
 async function populateIndex() {
     try {
@@ -160,8 +179,27 @@ app.delete('/api/documents/:id', async (req, res) => {
     }
 });
 
-// === KHỞI ĐỘNG SERVER VÀ ĐỒNG BỘ INDEX ===
-app.listen(PORT, async () => {
-    console.log(`🚀 Server đang chạy tại http://localhost:${PORT}`);
-    await populateIndex();
-});
+// === KHỞI ĐỘNG SERVER ===
+async function startServer() {
+    try {
+        // 1. Kết nối tới MongoDB và CHỜ cho đến khi hoàn tất
+        const dbURI = process.env.MONGODB_URI || "mongodb://localhost:27017/flexsearchDB";
+        await mongoose.connect(dbURI);
+        console.log('✅ Đã kết nối thành công với MongoDB!');
+
+        // Thêm dữ liệu mẫu nếu cần
+        await seedDatabase();
+
+        // 2. Sau khi kết nối thành công, mới khởi động Express server
+        app.listen(PORT, async () => {
+            console.log(`🚀 Server đang chạy tại http://localhost:${PORT}`);
+            // 3. Đồng bộ dữ liệu vào FlexSearch index
+            await populateIndex();
+        });
+    } catch (error) {
+        console.error('❌ Không thể kết nối tới MongoDB. Server không thể khởi động.', error);
+        process.exit(1); // Thoát ứng dụng nếu không kết nối được DB
+    }
+}
+
+startServer();

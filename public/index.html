@@ -1,383 +1,284 @@
-<!doctype html>
-<html lang="vi">
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>🔍 FlexSearch Demo - Gợi ý tìm kiếm</title>
-
-  <!-- ================== CSS ================== -->
-  <style>
-    /* ===== Bố cục & chung ===== */
-    body {
-      font-family: "Segoe UI", Arial, sans-serif;
-      background: #fafafa;
-      max-width: 800px;
-      margin: 2rem auto;
-      padding: 0 1rem;
-      color: #333;
-      line-height: 1.5;
-    }
-
-    h1, h2 {
-      color: #1e88e5;
-      text-align: center;
-    }
-    
-    /* --- BỐ CỤC TAB MỚI --- */
-    .tab-nav {
-      border-bottom: 2px solid #ddd;
-      margin-bottom: 20px;
-    }
-
-    .tab-nav button {
-      background-color: inherit;
-      border: none;
-      outline: none;
-      cursor: pointer;
-      padding: 14px 16px;
-      transition: 0.3s;
-      color: #555;
-      font-size: 1rem;
-      margin-top: 0;
-      border-radius: 6px 6px 0 0;
-    }
-
-    .tab-nav button:hover {
-      background-color: #f1f1f1;
-    }
-
-    .tab-nav button.active {
-      background-color: #1e88e5;
-      color: white;
-    }
-
-    .tab-content {
-      display: none;
-      padding: 6px 12px;
-    }
-    /* --- KẾT THÚC BỐ CỤC TAB --- */
-
-    .search-container {
-        position: relative;
-    }
-
-    #q {
-        font-size: 1.1rem;
-        padding: 12px;
-        width: 100%;
-        box-sizing: border-box;
-    }
-
-    #results {
-        position: absolute;
-        top: 100%;
-        left: 0;
-        right: 0;
-        background: #fff;
-        border: 1px solid #ddd;
-        border-top: none;
-        border-radius: 0 0 8px 8px;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        z-index: 1000;
-        max-height: 400px;
-        overflow-y: auto;
-    }
-
-    .result-item {
-        padding: 10px 15px;
-        cursor: pointer;
-        border-bottom: 1px solid #eee;
-    }
-    .result-item:last-child {
-        border-bottom: none;
-    }
-
-    .result-item:hover {
-        background-color: #f5f5f5;
-    }
-    
-    .result-item .title {
-        font-weight: bold;
-        color: #1565c0;
-    }
-    
-    .result-item .content-preview {
-        font-size: 0.9em;
-        color: #555;
-        margin-top: 4px;
-    }
-
-    input[type="text"], 
-    textarea {
-      width: 100%;
-      padding: 10px;
-      border-radius: 6px;
-      border: 1px solid #ccc;
-      margin-top: 6px;
-      font-size: 1rem;
-      box-sizing: border-box;
-    }
-
-    button {
-      padding: 10px 15px;
-      border: none;
-      border-radius: 6px;
-      background-color: #1e88e5;
-      color: white;
-      cursor: pointer;
-      margin-top: 10px;
-      font-size: 1rem;
-    }
-
-    button:hover {
-      background-color: #1565c0;
-    }
-
-    mark {
-      background: yellow;
-      font-weight: bold;
-      border-radius: 3px;
-      padding: 0 2px;
-    }
-
-    .add-form {
-      background: #fff;
-      padding: 15px;
-      border-radius: 8px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    }
-    
-    #main-content {
-        margin-top: 2rem;
-        padding: 20px;
-        background: #fff;
-        border-radius: 8px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        display: none;
-    }
-  </style>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, minimum-scale=1, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, shrink-to-fit=no, minimal-ui">
+    <title>Demo: Auto-Complete</title>
+    <style>
+        body{
+            padding: 0;
+            margin: 0 10px;
+            font-family: Helvetica, Arial, sans-serif;
+            font-size: 14px;
+        }
+        #header{
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            width: 100%;
+            display: flex;
+            justify-content: flex-start;
+            flex-direction: row;
+            max-width: 500px;
+            table-layout: fixed;
+            background-color: #fff;
+            z-index: 1;
+        }
+        input[type="text"]{
+            width: 100%;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            outline: none;
+            background-color: transparent;
+            position: absolute;
+            -webkit-appearance: none;
+            z-index: 1;
+        }
+        #autocomplete{
+            color: #999;
+            background-color: #f5f5f5;
+            pointer-events: none;
+        }
+        #select-prev,
+        #select-next{
+            z-index: 0;
+        }
+        input{
+            padding:7px 5px;
+            box-sizing: border-box;
+        }
+        #suggestions{
+            position: relative;
+            top: 50px;
+        }
+        #suggestions div{
+            padding: 10px 8px;
+            border-bottom: 1px solid #ddd;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            width: calc(100% - 16px);
+        }
+        #suggestions b{
+            color: blue;
+        }
+        #suggestions:empty:before{
+            content: "No resuls found";
+            font-size: 12px;
+            color: #999;
+            margin-left: 7px;
+        }
+        #info{
+            position: absolute;
+            bottom: 7px;
+            left: 12px;
+            color: #888;
+        }
+        label{
+            width: 100px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            margin: 0 10px;
+        }
+        @media only screen and (max-width: 600px) {
+            body{
+                font-size: 12px;
+            }
+        }
+    </style>
 </head>
-
 <body>
-  <h1>🔍 Tìm kiếm tài liệu (FlexSearch)</h1>
-  <p style="text-align:center;">Chuyển tab để thêm tài liệu mới hoặc tìm kiếm.</p>
+<div id="header">
+    <form style="position: relative; width: 100%;">
+        <input type="text" id="select-prev" tabindex="1">
+        <input type="text" id="autocomplete" readonly>
+        <input type="text" id="userinput" tabindex="2" placeholder="Search by movie title ..." autocorrect="off" spellcheck="false" autocomplete="off" autofocus>
+        <input type="text" id="select-next" tabindex="3">
+    </form>
+    <label>
+        <input type="checkbox" id="suggest" checked> Suggest
+    </label>
+</div>
+<!-- Iterate through results by arrow keys -->
+<div id="suggestions"></div>
+<script type="module">
 
-  <!-- Thanh điều hướng Tab -->
-  <div class="tab-nav">
-    <button id="defaultOpen" class="tab-link active" onclick="openTab(event, 'Search')">🔍 Tìm kiếm</button>
-    <button class="tab-link" onclick="openTab(event, 'AddNew')">➕ Thêm mới</button>
-  </div>
+    // Features:
+    // 1. Instant Search
+    // 2. Auto-Complete
+    // 3. Suggestions
+    // 4. Query Cache
+    // 5. Result Highlighting
+    // 6. Tokenizer
+    // 7. Encoder
+    // 8. Document Index (Field-Search)
+    // 9. Keyboard Navigation
 
-  <!-- Nội dung Tab Tìm kiếm -->
-  <div id="Search" class="tab-content">
-    <div class="search-container">
-      <input id="q" type="search" placeholder="Nhập từ khóa..." oninput="searchDocs()" autocomplete="off" />
-      <div id="results"></div>
-    </div>
-    <div id="main-content"></div>
-  </div>
+    import { Document } from "https://cdn.jsdelivr.net/gh/nextapps-de/flexsearch@master/dist/flexsearch.compact.module.min.js";
+    import data from "https://cdn.jsdelivr.net/gh/nextapps-de/flexsearch@master/demo/data/movies.js";
 
-  <!-- Nội dung Tab Thêm mới -->
-  <div id="AddNew" class="tab-content">
-    <h2>➕ Thêm tài liệu mới</h2>
-    <div class="add-form">
-      <input id="title" type="text" placeholder="Tiêu đề" />
-      <textarea id="content" placeholder="Nội dung"></textarea>
-      <button onclick="addDoc()">Thêm</button>
-    </div>
-  </div>
-
-  <!-- ================== JAVASCRIPT ================== -->
-  <script>
-    const API_URL = "http://localhost:3000";
-
-    // ==============================
-    // ✨ HÀM MỚI: ĐIỀU KHIỂN TAB
-    // ==============================
-    function openTab(evt, tabName) {
-      const tabcontent = document.getElementsByClassName("tab-content");
-      for (let i = 0; i < tabcontent.length; i++) {
-        tabcontent[i].style.display = "none";
-      }
-      const tablinks = document.getElementsByClassName("tab-link");
-      for (let i = 0; i < tablinks.length; i++) {
-        tablinks[i].className = tablinks[i].className.replace(" active", "");
-      }
-      document.getElementById(tabName).style.display = "block";
-      evt.currentTarget.className += " active";
-    }
-    // Mở tab mặc định khi tải trang
-    document.getElementById("defaultOpen").click();
-
-    // ==============================
-    // 🚀 HÀM TÌM KIẾM
-    // ==============================
-    async function searchDocs() {
-      const q = document.getElementById("q").value.trim();
-      const resultsDiv = document.getElementById("results");
-      
-      if (!q) {
-        resultsDiv.innerHTML = "";
-        return;
-      }
-
-      try {
-        const res = await fetch(`${API_URL}/search?q=${encodeURIComponent(q)}`);
-        if (!res.ok) throw new Error(`Lỗi HTTP: ${res.status}`);
-        const data = await res.json();
-
-        if (data.results.length === 0) {
-            resultsDiv.innerHTML = '<div class="result-item"><span style="color: #888;">Không tìm thấy kết quả.</span></div>';
-            return;
-        }
-
-        resultsDiv.innerHTML = data.results.map(doc => `
-          <div class="result-item" onclick="selectDoc(${doc.id})">
-            <div class="title">${highlight(doc.title, q)}</div>
-            <div class="content-preview">${highlight(doc.content.slice(0, 100), q)}...</div>
-          </div>
-        `).join("");
-
-      } catch (err) {
-        console.error("Lỗi khi tìm kiếm:", err);
-        resultsDiv.innerHTML = '<div class="result-item"><span style="color: red;">Lỗi kết nối server.</span></div>';
-      }
-    }
-    
-    // ==============================
-    // ✨ CHỌN VÀ HIỂN THỊ CHI TIẾT
-    // ==============================
-    async function selectDoc(id) {
-        try {
-            const res = await fetch(`${API_URL}/api/doc/${id}`);
-            if (!res.ok) throw new Error(`Không thể lấy dữ liệu tài liệu.`);
-            const doc = await res.json();
-            
-            const mainContentDiv = document.getElementById("main-content");
-            
-            mainContentDiv.innerHTML = `
-                <h2>${doc.title}</h2>
-                <p>${doc.content.replace(/\n/g, '<br>')}</p>
-                <small>ID: ${doc.id}</small>
-                <hr>
-                <button onclick="editDoc(${doc.id})">✏️ Sửa</button>
-                <button onclick="deleteDoc(${doc.id})">🗑️ Xóa</button>
-            `;
-            mainContentDiv.style.display = 'block';
-            
-            document.getElementById("results").innerHTML = "";
-            document.getElementById("q").value = doc.title;
-
-        } catch(err) {
-            console.error("Lỗi khi chọn tài liệu:", err);
-            alert("Không thể tải chi tiết tài liệu.");
-        }
-    }
-
-    // ==============================
-    // 🟡 HIGHLIGHT TỪ KHÓA
-    // ==============================
-    function highlight(text, query) {
-      if (!query || !text) return text || '';
-      const regex = new RegExp(`(${escapeRegex(query)})`, "gi");
-      return text.replace(regex, "<mark>$1</mark>");
-    }
-
-    function escapeRegex(str) {
-      if(!str) return '';
-      return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    }
-
-    // ==============================
-    // ➕ THÊM TÀI LIỆU MỚI
-    // ==============================
-    async function addDoc() {
-      const title = document.getElementById("title").value;
-      const content = document.getElementById("content").value;
-
-      if (!title || !content) {
-        alert("Vui lòng nhập đủ tiêu đề và nội dung!");
-        return;
-      }
-
-      try {
-          const res = await fetch(`${API_URL}/api/add`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ title, content })
-          });
-          const data = await res.json();
-
-          alert(data.message || data.error);
-          if (res.ok) {
-            clearForm();
-          }
-      } catch(err) {
-          console.error("Lỗi khi thêm:", err);
-          alert("Đã xảy ra lỗi khi thêm tài liệu.");
-      }
-    }
-
-    // ==============================
-    // ✏️ SỬA TÀI LIỆU
-    // ==============================
-    async function editDoc(id) {
-      const currentDoc = await (await fetch(`${API_URL}/api/doc/${id}`)).json();
-      
-      const newTitle = prompt("Nhập tiêu đề mới:", currentDoc.title);
-      if (newTitle === null) return;
-      const newContent = prompt("Nhập nội dung mới:", currentDoc.content);
-      if (newContent === null) return;
-
-      try {
-          const res = await fetch(`${API_URL}/api/update/${id}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ title: newTitle, content: newContent })
-          });
-          const data = await res.json();
-          alert(data.message || data.error);
-          if(res.ok) selectDoc(id);
-      } catch(err) {
-          console.error("Lỗi khi sửa:", err);
-          alert("Đã xảy ra lỗi khi cập nhật tài liệu.");
-      }
-    }
-
-    // ==============================
-    // 🗑️ XÓA TÀI LIỆU
-    // ==============================
-    async function deleteDoc(id) {
-      if (!confirm(`Bạn có chắc chắn muốn xóa tài liệu có ID là ${id}?`)) return;
-      try {
-          const res = await fetch(`${API_URL}/api/remove/${id}`, { method: "DELETE" });
-          const data = await res.json();
-          alert(data.message || data.error);
-          if(res.ok) {
-            document.getElementById("main-content").style.display = 'none';
-            document.getElementById("q").value = '';
-          }
-      } catch(err) {
-          console.error("Lỗi khi xóa:", err);
-          alert("Đã xảy ra lỗi khi xóa tài liệu.");
-      }
-    }
-
-    // ==============================
-    // 🧹 DỌN FORM
-    // ==============================
-    function clearForm() {
-      document.getElementById("title").value = "";
-      document.getElementById("content").value = "";
-    }
-    
-    // Đóng danh sách gợi ý khi bấm ra ngoài
-    document.addEventListener('click', function(event) {
-        const searchContainer = document.querySelector('.search-container');
-        if (searchContainer && !searchContainer.contains(event.target)) {
-            document.getElementById('results').innerHTML = '';
+    // for "Result Highlighting" it requires the usage of a Document Index
+    // also when just adding id-content-pairs to a single index
+    const index = new Document({
+        document: {
+            // storing documents is required in this example
+            store: true,
+            index: [{
+                field: "title",
+                // important: a forward tokenizer is minimum
+                // required by an instant search
+                tokenize: "forward"
+            }]
         }
     });
-  </script>
+
+    // The movies.js data used in this example is an array of strings.
+    // Since result highlighting needs a Document Index, the data
+    // has to be simply upgraded to a pseudo document.
+
+    for(let i = 0; i < data.length; i++){
+        // pass a json-like object
+        index.add(i, {
+            "title": data[i]
+        });
+    }
+
+    const suggestions = document.getElementById("suggestions");
+    const autocomplete = document.getElementById("autocomplete");
+    const userinput = document.getElementById("userinput");
+    const suggest = document.getElementById("suggest");
+    const select_prev = document.getElementById("select-prev");
+    const select_next = document.getElementById("select-next");
+    let results = [];
+    let iterate = 0;
+
+    userinput.addEventListener("input", show_results, true);
+    userinput.addEventListener("keyup", accept_autocomplete, true);
+    userinput.addEventListener("keydown", iterate_selected, true);
+    suggest.addEventListener("change", toggle_suggest, true);
+    suggestions.addEventListener("click", accept_suggestion, true);
+
+    select_prev.addEventListener("focus", function(){
+        iterate_selected({ key: "ArrowUp" });
+        userinput.focus();
+    }, true);
+
+    select_next.addEventListener("focus", function(){
+        iterate_selected({ key: "ArrowDown" });
+        userinput.focus();
+    }, true);
+
+    function toggle_suggest(){
+        // changing any of the search options requires
+        // deletion of cached results (when using cache)
+        index.cache.clear();
+        show_results();
+    }
+
+    function show_results(){
+
+        // the cache is a perfect addition
+        // for an instant search on keypress
+
+        results = userinput.value ? index.searchCache({
+            query: userinput.value,
+            suggest: suggest.checked,
+            limit: 25,
+            pluck: "title",
+            enrich: true,
+            highlight: "<b>$1</b>"
+        }) : [];
+
+        let entry, childs = suggestions.childNodes;
+        let i = 0, len = results.length;
+
+        for(; i < len; i++){
+
+            entry = childs[i];
+
+            if(!entry){
+                entry = document.createElement("div");
+                suggestions.appendChild(entry);
+            }
+
+            entry.innerHTML = results[i].highlight; //data[results[i]];
+        }
+
+        while(childs.length > len){
+            suggestions.removeChild(childs[i]);
+        }
+
+        select_result(0);
+        iterate_selected();
+    }
+
+    function iterate_selected(event){
+
+        let index = iterate;
+
+        if(event){
+            const key = event.key;
+            if(key === "ArrowUp"){
+                if(iterate > 0){
+                    select_result(--index);
+                }
+                event.preventDefault &&
+                event.preventDefault();
+            }
+            else if(key === "ArrowDown"){
+                if(iterate < results.length){
+                    select_result(++index);
+                }
+                event.preventDefault &&
+                event.preventDefault();
+            }
+        }
+
+        let value = userinput.value;
+        let first_result = results && results[index] && data[results[index].id];
+        let match = first_result && first_result.toLowerCase().indexOf(value.toLowerCase());
+
+        if(first_result && (match > -1)){
+            autocomplete.value = value + first_result.substring(match + value.length);
+            autocomplete.current = first_result;
+        }
+        else{
+            autocomplete.value = autocomplete.current = value;
+        }
+    }
+
+    function select_result(index){
+
+        let node = suggestions.childNodes[iterate];
+        node && (node.style.backgroundColor = "");
+
+        iterate = index;
+
+        node = suggestions.childNodes[iterate];
+        node && (node.style.backgroundColor = "rgba(0, 0, 255, 0.1)");
+    }
+
+    function accept_autocomplete(event){
+
+        const key = (event || window.event).keyCode;
+
+        if(key === 13 || key === 39) {
+            const node = suggestions.childNodes[iterate];
+            if(!node) return;
+            userinput.value = autocomplete.value = node.textContent;
+            suggestions.textContent = "";
+        }
+    }
+
+    function accept_suggestion(event){
+
+        const target = (event || window.event).target;
+        userinput.value = autocomplete.value = target.textContent;
+        suggestions.textContent = "";
+
+        return false;
+    }
+</script>
 </body>
 </html>
