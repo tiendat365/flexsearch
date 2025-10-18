@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>🔍 FlexSearch Demo - Nâng cấp</title>
+  <title>🔍 FlexSearch Demo - Gợi ý tìm kiếm</title>
 
   <!-- ================== CSS ================== -->
   <style>
@@ -22,16 +22,92 @@
       color: #1e88e5;
       text-align: center;
     }
-
-    /* ===== Ô tìm kiếm ===== */
-    .search-area {
-      margin-bottom: 1.5rem;
-      text-align: center;
+    
+    /* --- BỐ CỤC TAB MỚI --- */
+    .tab-nav {
+      border-bottom: 2px solid #ddd;
+      margin-bottom: 20px;
     }
 
-    input[type="search"], 
+    .tab-nav button {
+      background-color: inherit;
+      border: none;
+      outline: none;
+      cursor: pointer;
+      padding: 14px 16px;
+      transition: 0.3s;
+      color: #555;
+      font-size: 1rem;
+      margin-top: 0;
+      border-radius: 6px 6px 0 0;
+    }
+
+    .tab-nav button:hover {
+      background-color: #f1f1f1;
+    }
+
+    .tab-nav button.active {
+      background-color: #1e88e5;
+      color: white;
+    }
+
+    .tab-content {
+      display: none;
+      padding: 6px 12px;
+    }
+    /* --- KẾT THÚC BỐ CỤC TAB --- */
+
+    .search-container {
+        position: relative;
+    }
+
+    #q {
+        font-size: 1.1rem;
+        padding: 12px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    #results {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: #fff;
+        border: 1px solid #ddd;
+        border-top: none;
+        border-radius: 0 0 8px 8px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        z-index: 1000;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    .result-item {
+        padding: 10px 15px;
+        cursor: pointer;
+        border-bottom: 1px solid #eee;
+    }
+    .result-item:last-child {
+        border-bottom: none;
+    }
+
+    .result-item:hover {
+        background-color: #f5f5f5;
+    }
+    
+    .result-item .title {
+        font-weight: bold;
+        color: #1565c0;
+    }
+    
+    .result-item .content-preview {
+        font-size: 0.9em;
+        color: #555;
+        margin-top: 4px;
+    }
+
     input[type="text"], 
-    input[type="number"], 
     textarea {
       width: 100%;
       padding: 10px;
@@ -39,10 +115,9 @@
       border: 1px solid #ccc;
       margin-top: 6px;
       font-size: 1rem;
-      box-sizing: border-box; /* Thêm để padding không làm thay đổi width */
+      box-sizing: border-box;
     }
 
-    /* ===== Nút ===== */
     button {
       padding: 10px 15px;
       border: none;
@@ -50,84 +125,66 @@
       background-color: #1e88e5;
       color: white;
       cursor: pointer;
-      margin-top: 10px; /* Thêm khoảng cách */
+      margin-top: 10px;
       font-size: 1rem;
     }
 
     button:hover {
       background-color: #1565c0;
     }
-    
-    .result button {
-        padding: 6px 10px;
-        margin-top: 0;
-        margin-right: 6px;
-        font-size: 0.9rem;
-    }
-
-    /* ===== Kết quả tìm kiếm ===== */
-    .result {
-      background: #fff;
-      border: 1px solid #eee;
-      border-radius: 8px;
-      padding: 10px 15px;
-      margin-bottom: 10px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    }
-
-    .result .title {
-      font-weight: bold;
-      color: #1565c0;
-    }
-
-    .result small {
-      color: #888;
-    }
 
     mark {
       background: yellow;
       font-weight: bold;
       border-radius: 3px;
+      padding: 0 2px;
     }
 
-    /* ===== Form thêm tài liệu ===== */
     .add-form {
       background: #fff;
       padding: 15px;
       border-radius: 8px;
       box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     }
-
-    hr {
-      margin: 2rem 0;
-      border: 0;
-      border-top: 1px solid #ddd;
+    
+    #main-content {
+        margin-top: 2rem;
+        padding: 20px;
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        display: none;
     }
   </style>
 </head>
 
 <body>
   <h1>🔍 Tìm kiếm tài liệu (FlexSearch)</h1>
-  <p style="text-align:center;">Nhập từ khóa để tìm trong tập dữ liệu. Hỗ trợ CRUD (Thêm / Sửa / Xóa).</p>
+  <p style="text-align:center;">Chuyển tab để thêm tài liệu mới hoặc tìm kiếm.</p>
 
-  <!-- Ô tìm kiếm -->
-  <div class="search-area">
-    <input id="q" type="search" placeholder="Nhập từ khóa..." oninput="searchDocs()" />
-    <div id="stats"></div>
+  <!-- Thanh điều hướng Tab -->
+  <div class="tab-nav">
+    <button id="defaultOpen" class="tab-link active" onclick="openTab(event, 'Search')">🔍 Tìm kiếm</button>
+    <button class="tab-link" onclick="openTab(event, 'AddNew')">➕ Thêm mới</button>
   </div>
 
-  <!-- Kết quả tìm kiếm -->
-  <div id="results"></div>
+  <!-- Nội dung Tab Tìm kiếm -->
+  <div id="Search" class="tab-content">
+    <div class="search-container">
+      <input id="q" type="search" placeholder="Nhập từ khóa..." oninput="searchDocs()" autocomplete="off" />
+      <div id="results"></div>
+    </div>
+    <div id="main-content"></div>
+  </div>
 
-  <hr>
-
-  <!-- Form thêm tài liệu -->
-  <h2>➕ Thêm tài liệu mới</h2>
-  <div class="add-form">
-    <input id="id" type="number" placeholder="ID (ví dụ: 5, 6...)" />
-    <input id="title" type="text" placeholder="Tiêu đề" />
-    <textarea id="content" placeholder="Nội dung"></textarea>
-    <button onclick="addDoc()">Thêm</button>
+  <!-- Nội dung Tab Thêm mới -->
+  <div id="AddNew" class="tab-content">
+    <h2>➕ Thêm tài liệu mới</h2>
+    <div class="add-form">
+      <input id="title" type="text" placeholder="Tiêu đề" />
+      <textarea id="content" placeholder="Nội dung"></textarea>
+      <button onclick="addDoc()">Thêm</button>
+    </div>
   </div>
 
   <!-- ================== JAVASCRIPT ================== -->
@@ -135,16 +192,32 @@
     const API_URL = "http://localhost:3000";
 
     // ==============================
+    // ✨ HÀM MỚI: ĐIỀU KHIỂN TAB
+    // ==============================
+    function openTab(evt, tabName) {
+      const tabcontent = document.getElementsByClassName("tab-content");
+      for (let i = 0; i < tabcontent.length; i++) {
+        tabcontent[i].style.display = "none";
+      }
+      const tablinks = document.getElementsByClassName("tab-link");
+      for (let i = 0; i < tablinks.length; i++) {
+        tablinks[i].className = tablinks[i].className.replace(" active", "");
+      }
+      document.getElementById(tabName).style.display = "block";
+      evt.currentTarget.className += " active";
+    }
+    // Mở tab mặc định khi tải trang
+    document.getElementById("defaultOpen").click();
+
+    // ==============================
     // 🚀 HÀM TÌM KIẾM
     // ==============================
     async function searchDocs() {
       const q = document.getElementById("q").value.trim();
       const resultsDiv = document.getElementById("results");
-      const statsDiv = document.getElementById("stats");
-
+      
       if (!q) {
         resultsDiv.innerHTML = "";
-        statsDiv.innerHTML = "";
         return;
       }
 
@@ -153,21 +226,52 @@
         if (!res.ok) throw new Error(`Lỗi HTTP: ${res.status}`);
         const data = await res.json();
 
-        statsDiv.innerHTML = `<p><b>${data.total}</b> kết quả cho "<i>${q}</i>"</p>`;
+        if (data.results.length === 0) {
+            resultsDiv.innerHTML = '<div class="result-item"><span style="color: #888;">Không tìm thấy kết quả.</span></div>';
+            return;
+        }
 
         resultsDiv.innerHTML = data.results.map(doc => `
-          <div class="result">
+          <div class="result-item" onclick="selectDoc(${doc.id})">
             <div class="title">${highlight(doc.title, q)}</div>
-            <small>ID: ${doc.id}</small>
-            <p>${highlight(doc.content.slice(0, 200), q)}...</p>
-            <button onclick="editDoc(${doc.id})">✏️ Sửa</button>
-            <button onclick="deleteDoc(${doc.id})">🗑️ Xóa</button>
+            <div class="content-preview">${highlight(doc.content.slice(0, 100), q)}...</div>
           </div>
         `).join("");
+
       } catch (err) {
         console.error("Lỗi khi tìm kiếm:", err);
-        resultsDiv.innerHTML = "<p style='color:red;'>Không thể tải kết quả. Bạn đã chạy server chưa? (Xem file README.md)</p>";
+        resultsDiv.innerHTML = '<div class="result-item"><span style="color: red;">Lỗi kết nối server.</span></div>';
       }
+    }
+    
+    // ==============================
+    // ✨ CHỌN VÀ HIỂN THỊ CHI TIẾT
+    // ==============================
+    async function selectDoc(id) {
+        try {
+            const res = await fetch(`${API_URL}/api/doc/${id}`);
+            if (!res.ok) throw new Error(`Không thể lấy dữ liệu tài liệu.`);
+            const doc = await res.json();
+            
+            const mainContentDiv = document.getElementById("main-content");
+            
+            mainContentDiv.innerHTML = `
+                <h2>${doc.title}</h2>
+                <p>${doc.content.replace(/\n/g, '<br>')}</p>
+                <small>ID: ${doc.id}</small>
+                <hr>
+                <button onclick="editDoc(${doc.id})">✏️ Sửa</button>
+                <button onclick="deleteDoc(${doc.id})">🗑️ Xóa</button>
+            `;
+            mainContentDiv.style.display = 'block';
+            
+            document.getElementById("results").innerHTML = "";
+            document.getElementById("q").value = doc.title;
+
+        } catch(err) {
+            console.error("Lỗi khi chọn tài liệu:", err);
+            alert("Không thể tải chi tiết tài liệu.");
+        }
     }
 
     // ==============================
@@ -188,12 +292,11 @@
     // ➕ THÊM TÀI LIỆU MỚI
     // ==============================
     async function addDoc() {
-      const id = document.getElementById("id").value;
       const title = document.getElementById("title").value;
       const content = document.getElementById("content").value;
 
-      if (!id || !title || !content) {
-        alert("Vui lòng nhập đủ ID, tiêu đề và nội dung!");
+      if (!title || !content) {
+        alert("Vui lòng nhập đủ tiêu đề và nội dung!");
         return;
       }
 
@@ -201,16 +304,13 @@
           const res = await fetch(`${API_URL}/api/add`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id: Number(id), title, content })
+            body: JSON.stringify({ title, content })
           });
           const data = await res.json();
 
           alert(data.message || data.error);
           if (res.ok) {
             clearForm();
-            // Tự động tìm kiếm lại với tiêu đề vừa thêm để hiển thị kết quả
-            document.getElementById("q").value = title; 
-            searchDocs();
           }
       } catch(err) {
           console.error("Lỗi khi thêm:", err);
@@ -236,9 +336,8 @@
             body: JSON.stringify({ title: newTitle, content: newContent })
           });
           const data = await res.json();
-
           alert(data.message || data.error);
-          if(res.ok) searchDocs(); // Tải lại kết quả tìm kiếm hiện tại
+          if(res.ok) selectDoc(id);
       } catch(err) {
           console.error("Lỗi khi sửa:", err);
           alert("Đã xảy ra lỗi khi cập nhật tài liệu.");
@@ -254,7 +353,10 @@
           const res = await fetch(`${API_URL}/api/remove/${id}`, { method: "DELETE" });
           const data = await res.json();
           alert(data.message || data.error);
-          if(res.ok) searchDocs();
+          if(res.ok) {
+            document.getElementById("main-content").style.display = 'none';
+            document.getElementById("q").value = '';
+          }
       } catch(err) {
           console.error("Lỗi khi xóa:", err);
           alert("Đã xảy ra lỗi khi xóa tài liệu.");
@@ -265,10 +367,17 @@
     // 🧹 DỌN FORM
     // ==============================
     function clearForm() {
-      document.getElementById("id").value = "";
       document.getElementById("title").value = "";
       document.getElementById("content").value = "";
     }
+    
+    // Đóng danh sách gợi ý khi bấm ra ngoài
+    document.addEventListener('click', function(event) {
+        const searchContainer = document.querySelector('.search-container');
+        if (searchContainer && !searchContainer.contains(event.target)) {
+            document.getElementById('results').innerHTML = '';
+        }
+    });
   </script>
 </body>
 </html>
