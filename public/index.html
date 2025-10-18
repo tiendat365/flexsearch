@@ -39,21 +39,30 @@
       border: 1px solid #ccc;
       margin-top: 6px;
       font-size: 1rem;
+      box-sizing: border-box; /* Thêm để padding không làm thay đổi width */
     }
 
     /* ===== Nút ===== */
     button {
-      padding: 6px 10px;
+      padding: 10px 15px;
       border: none;
       border-radius: 6px;
       background-color: #1e88e5;
       color: white;
       cursor: pointer;
-      margin-right: 6px;
+      margin-top: 10px; /* Thêm khoảng cách */
+      font-size: 1rem;
     }
 
     button:hover {
       background-color: #1565c0;
+    }
+    
+    .result button {
+        padding: 6px 10px;
+        margin-top: 0;
+        margin-right: 6px;
+        font-size: 0.9rem;
     }
 
     /* ===== Kết quả tìm kiếm ===== */
@@ -78,6 +87,7 @@
     mark {
       background: yellow;
       font-weight: bold;
+      border-radius: 3px;
     }
 
     /* ===== Form thêm tài liệu ===== */
@@ -114,7 +124,7 @@
   <!-- Form thêm tài liệu -->
   <h2>➕ Thêm tài liệu mới</h2>
   <div class="add-form">
-    <input id="id" type="number" placeholder="ID" />
+    <input id="id" type="number" placeholder="ID (ví dụ: 5, 6...)" />
     <input id="title" type="text" placeholder="Tiêu đề" />
     <textarea id="content" placeholder="Nội dung"></textarea>
     <button onclick="addDoc()">Thêm</button>
@@ -122,6 +132,8 @@
 
   <!-- ================== JAVASCRIPT ================== -->
   <script>
+    const API_URL = "http://localhost:3000";
+
     // ==============================
     // 🚀 HÀM TÌM KIẾM
     // ==============================
@@ -137,23 +149,24 @@
       }
 
       try {
-        const res = await fetch(`/search?q=${encodeURIComponent(q)}`);
+        const res = await fetch(`${API_URL}/search?q=${encodeURIComponent(q)}`);
+        if (!res.ok) throw new Error(`Lỗi HTTP: ${res.status}`);
         const data = await res.json();
 
         statsDiv.innerHTML = `<p><b>${data.total}</b> kết quả cho "<i>${q}</i>"</p>`;
 
-
         resultsDiv.innerHTML = data.results.map(doc => `
           <div class="result">
-            <div class="title">\${highlight(doc.title, q)}</div>
-            <small>ID: \${doc.id}</small>
-            <p>\${highlight(doc.content.slice(0, 200), q)}...</p>
-            <button onclick="editDoc(\${doc.id})">✏️ Sửa</button>
-            <button onclick="deleteDoc(\${doc.id})">🗑️ Xóa</button>
+            <div class="title">${highlight(doc.title, q)}</div>
+            <small>ID: ${doc.id}</small>
+            <p>${highlight(doc.content.slice(0, 200), q)}...</p>
+            <button onclick="editDoc(${doc.id})">✏️ Sửa</button>
+            <button onclick="deleteDoc(${doc.id})">🗑️ Xóa</button>
           </div>
-        \`).join("");
+        `).join("");
       } catch (err) {
         console.error("Lỗi khi tìm kiếm:", err);
+        resultsDiv.innerHTML = "<p style='color:red;'>Không thể tải kết quả. Bạn đã chạy server chưa? (Xem file README.md)</p>";
       }
     }
 
@@ -161,13 +174,14 @@
     // 🟡 HIGHLIGHT TỪ KHÓA
     // ==============================
     function highlight(text, query) {
-      if (!query) return text;
-      const regex = new RegExp(\`(\${escapeRegex(query)})\`, "gi");
+      if (!query || !text) return text || '';
+      const regex = new RegExp(`(${escapeRegex(query)})`, "gi");
       return text.replace(regex, "<mark>$1</mark>");
     }
 
     function escapeRegex(str) {
-      return str.replace(/[.*+?^\${}()|[\]\\]/g, "\\$&");
+      if(!str) return '';
+      return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     }
 
     // ==============================
@@ -183,46 +197,68 @@
         return;
       }
 
-      const res = await fetch("/api/add", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, title, content })
-      });
-      const data = await res.json();
+      try {
+          const res = await fetch(`${API_URL}/api/add`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: Number(id), title, content })
+          });
+          const data = await res.json();
 
-      alert(data.message || data.error);
-      clearForm();
-      searchDocs();
+          alert(data.message || data.error);
+          if (res.ok) {
+            clearForm();
+            // Tự động tìm kiếm lại với tiêu đề vừa thêm để hiển thị kết quả
+            document.getElementById("q").value = title; 
+            searchDocs();
+          }
+      } catch(err) {
+          console.error("Lỗi khi thêm:", err);
+          alert("Đã xảy ra lỗi khi thêm tài liệu.");
+      }
     }
 
     // ==============================
     // ✏️ SỬA TÀI LIỆU
     // ==============================
     async function editDoc(id) {
-      const newTitle = prompt("Nhập tiêu đề mới:");
-      const newContent = prompt("Nhập nội dung mới:");
-      if (!newTitle || !newContent) return;
+      const currentDoc = await (await fetch(`${API_URL}/api/doc/${id}`)).json();
+      
+      const newTitle = prompt("Nhập tiêu đề mới:", currentDoc.title);
+      if (newTitle === null) return;
+      const newContent = prompt("Nhập nội dung mới:", currentDoc.content);
+      if (newContent === null) return;
 
-      const res = await fetch(\`/api/update/\${id}\`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: newTitle, content: newContent })
-      });
-      const data = await res.json();
+      try {
+          const res = await fetch(`${API_URL}/api/update/${id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ title: newTitle, content: newContent })
+          });
+          const data = await res.json();
 
-      alert(data.message || data.error);
-      searchDocs();
+          alert(data.message || data.error);
+          if(res.ok) searchDocs(); // Tải lại kết quả tìm kiếm hiện tại
+      } catch(err) {
+          console.error("Lỗi khi sửa:", err);
+          alert("Đã xảy ra lỗi khi cập nhật tài liệu.");
+      }
     }
 
     // ==============================
     // 🗑️ XÓA TÀI LIỆU
     // ==============================
     async function deleteDoc(id) {
-      if (!confirm("Xóa tài liệu này?")) return;
-      const res = await fetch(\`/api/remove/\${id}\`, { method: "DELETE" });
-      const data = await res.json();
-      alert(data.message || data.error);
-      searchDocs();
+      if (!confirm(`Bạn có chắc chắn muốn xóa tài liệu có ID là ${id}?`)) return;
+      try {
+          const res = await fetch(`${API_URL}/api/remove/${id}`, { method: "DELETE" });
+          const data = await res.json();
+          alert(data.message || data.error);
+          if(res.ok) searchDocs();
+      } catch(err) {
+          console.error("Lỗi khi xóa:", err);
+          alert("Đã xảy ra lỗi khi xóa tài liệu.");
+      }
     }
 
     // ==============================

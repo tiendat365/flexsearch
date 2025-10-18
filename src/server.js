@@ -1,183 +1,167 @@
-// ==========================
-// 📘 IMPORT CÁC THƯ VIỆN
-// ==========================
-const path = require('path');
 const express = require('express');
-const morgan = require('morgan');
-const fs = require('fs');
-const { Document } = require('flexsearch'); // Dùng Document mode thay vì Index
+const cors = require('cors');
+const FlexSearch = require('flexsearch');
+const mongoose = require('mongoose');
+require('dotenv').config(); // Tải các biến môi trường từ file .env
 
-// ==========================
-// ⚙️ CẤU HÌNH CƠ BẢN
-// ==========================
+// === KHỞI TẠO ỨNG DỤNG EXPRESS ===
 const app = express();
-const PORT = process.env.PORT || 3000;
+// Sử dụng PORT từ file .env hoặc mặc định là 5000
+const PORT = process.env.PORT || 5000;
 
-// Middleware phục vụ logging và đọc JSON body
-app.use(morgan('dev'));
+// === CẤU HÌNH MIDDLEWARE ===
+app.use(cors());
 app.use(express.json());
 
-// Phục vụ file tĩnh cho giao diện web (public/index.html)
-app.use(express.static(path.join(__dirname, '..', 'public')));
+// === KẾT NỐI VỚI MONGODB ===
+// Sử dụng chuỗi kết nối từ file .env
+const dbURI = process.env.MONGODB_URI || "mongodb://localhost:27017/flexsearchDB";
+mongoose.connect(dbURI)
+    .then(() => console.log('✅ Đã kết nối thành công với MongoDB!'))
+    .catch(err => console.error('❌ Lỗi kết nối MongoDB:', err));
 
-// ==========================
-// 📂 ĐỌC DỮ LIỆU TỪ FILE
-// ==========================
-const docsPath = path.join(__dirname, '..', 'data', 'documents.json');
-let documents = [];
+// === ĐỊNH NGHĨA CẤU TRÚC DỮ LIỆU (SCHEMA & MODEL) ===
+const documentSchema = new mongoose.Schema({
+    title: { type: String, required: true },
+    content: { type: String, required: true }
+}, { timestamps: true }); // Thêm timestamps để biết khi nào tài liệu được tạo/cập nhật
+const Document = mongoose.model('Document', documentSchema);
 
-try {
-  const raw = fs.readFileSync(docsPath, 'utf8');
-  documents = JSON.parse(raw);
-  console.log(`✅ Đã tải ${documents.length} tài liệu từ file.`);
-} catch (err) {
-  console.error('⚠️ Không thể đọc documents.json:', err.message);
+// === KHỞI TẠO INDEX CỦA FLEXSEARCH ===
+const index = new FlexSearch.Document({
+    document: {
+        id: "_id",
+        index: ["title", "content"]
+    },
+    tokenize: "full",
+    encoder: 'icase'
+});
+
+// === HÀM ĐỒNG BỘ DỮ LIỆU TỪ DB VÀO INDEX ===
+async function populateIndex() {
+    try {
+        console.log("🔄 Đang đồng bộ dữ liệu từ MongoDB vào Index...");
+        const allDocs = await Document.find({});
+        // Xóa index cũ trước khi thêm mới để tránh trùng lặp
+        await index.clear();
+        allDocs.forEach(doc => {
+            index.add({ ...doc.toObject(), _id: doc._id.toString() });
+        });
+        console.log(`✅ Đồng bộ thành công ${allDocs.length} tài liệu.`);
+    } catch (error) {
+        console.error("❌ Lỗi khi đồng bộ index:", error);
+    }
 }
 
-// ==========================
-// 🔍 KHỞI TẠO FLEXSEARCH INDEX
-// ==========================
-const index = new Document({
-  document: {
-    id: 'id',
-    index: ['title', 'content'] // tìm kiếm theo tiêu đề và nội dung
-  }
+// ===================================
+// === ĐỊNH NGHĨA CÁC ĐƯỜNG DẪN API ===
+// ===================================
+
+// API Tìm kiếm (dùng Index)
+app.get('/api/search', (req, res) => {
+    try {
+        const query = req.query.q;
+        if (!query) {
+             return res.status(400).json({ error: "Thiếu tham số tìm kiếm 'q'" });
+        }
+        const searchResults = index.search(query, { enrich: true, limit: 10, fuzzy: 1 });
+        const uniqueResults = {};
+        searchResults.forEach(result => {
+            result.result.forEach(doc => {
+                uniqueResults[doc.id] = doc.doc;
+            });
+        });
+        res.json(Object.values(uniqueResults));
+    } catch (error) {
+        console.error("Lỗi API Search:", error);
+        res.status(500).json({ error: "Lỗi máy chủ khi tìm kiếm" });
+    }
 });
 
-// Thêm dữ liệu vào index khi khởi động
-documents.forEach(doc => {
-  try {
-    index.add(doc);
-  } catch (err) {
-    console.error('Lỗi khi index doc', doc.id, err.message);
-  }
+// API Lấy tất cả tài liệu (CÓ PHÂN TRANG)
+app.get('/api/documents', async (req, res) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
+
+        const docs = await Document.find({}).sort({ createdAt: -1 }).skip(skip).limit(limit);
+        const totalDocuments = await Document.countDocuments();
+        
+        res.json({
+            documents: docs,
+            currentPage: page,
+            totalPages: Math.ceil(totalDocuments / limit)
+        });
+    } catch (error) {
+        console.error("Lỗi API Get Documents:", error);
+        res.status(500).json({ error: "Lỗi máy chủ khi lấy tài liệu" });
+    }
 });
 
-// ==========================
-// 💾 HÀM TIỆN ÍCH: LƯU DỮ LIỆU RA FILE
-// ==========================
-function saveDocuments() {
-  try {
-    fs.writeFileSync(docsPath, JSON.stringify(documents, null, 2), 'utf8');
-    console.log('💾 Đã lưu dữ liệu vào documents.json');
-  } catch (err) {
-    console.error('❌ Lỗi khi lưu dữ liệu:', err.message);
-  }
-}
+// API Thêm tài liệu
+app.post('/api/documents', async (req, res) => {
+    try {
+        const { title, content } = req.body;
+        if (!title || !content) {
+            return res.status(400).json({ error: "Tiêu đề và nội dung là bắt buộc" });
+        }
+        const newDoc = new Document({ title, content });
+        await newDoc.save();
+        
+        // Phản hồi cho người dùng ngay lập tức
+        res.status(201).json(newDoc);
+        
+        // Cập nhật index trong nền
+        index.add({ ...newDoc.toObject(), _id: newDoc._id.toString() });
+        console.log(`📝 Đã thêm tài liệu "${title}" vào DB và Index.`);
 
-// ==========================
-// ⚡ CACHE KẾT QUẢ TÌM KIẾM
-// ==========================
-const cache = new Map(); // Map<query, result>
-
-// ==========================
-// 🚀 API: TÌM KIẾM TOÀN VĂN
-// ==========================
-app.get('/search', (req, res) => {
-  const q = (req.query.q || '').trim();
-  if (!q) return res.json({ query: q, total: 0, results: [] });
-
-  // Trả kết quả từ cache nếu có
-  if (cache.has(q)) {
-    console.log(`⚡ Cache hit: "${q}"`);
-    return res.json({ query: q, cached: true, ...cache.get(q) });
-  }
-
-  // Tìm kiếm theo FlexSearch
-  const results = index.search(q, { enrich: true, limit: 100 });
-  const merged = results.flatMap(r => r.result);
-  const found = merged.map(id => documents.find(d => d.id === id)).filter(Boolean);
-
-  const data = { total: found.length, results: found };
-  cache.set(q, data);
-
-  res.json({ query: q, cached: false, ...data });
+    } catch (error) {
+        console.error("Lỗi API Add Document:", error);
+        res.status(500).json({ error: "Lỗi máy chủ khi thêm tài liệu" });
+    }
 });
 
-// ==========================
-// 📘 API: LẤY TOÀN BỘ TÀI LIỆU
-// ==========================
-app.get('/docs', (req, res) => {
-  res.json({ total: documents.length, documents });
+// API Cập nhật tài liệu
+app.put('/api/documents/:id', async (req, res) => {
+    try {
+        const updatedDoc = await Document.findByIdAndUpdate(req.params.id, req.body, { new: true });
+        if (!updatedDoc) {
+            return res.status(404).json({ error: "Không tìm thấy tài liệu" });
+        }
+        
+        res.json(updatedDoc);
+
+        index.update({ ...updatedDoc.toObject(), _id: updatedDoc._id.toString() });
+        console.log(`🔄 Đã cập nhật tài liệu "${updatedDoc.title}" trong DB và Index.`);
+
+    } catch (error) {
+        console.error("Lỗi API Update Document:", error);
+        res.status(500).json({ error: "Lỗi máy chủ khi cập nhật tài liệu" });
+    }
 });
 
-// ==========================
-// ➕ API: THÊM TÀI LIỆU MỚI
-// ==========================
-app.post('/api/add', (req, res) => {
-  const { id, title, content } = req.body;
-  if (!id || !title || !content) {
-    return res.status(400).json({ error: 'Thiếu id, title hoặc content' });
-  }
+// API Xóa tài liệu
+app.delete('/api/documents/:id', async (req, res) => {
+    try {
+        const deletedDoc = await Document.findByIdAndDelete(req.params.id);
+        if (!deletedDoc) {
+            return res.status(404).json({ error: "Không tìm thấy tài liệu" });
+        }
+        
+        res.json({ message: "Xóa thành công" });
+        
+        index.remove(req.params.id.toString());
+        console.log(`🗑️ Đã xóa tài liệu ID "${req.params.id}" khỏi DB và Index.`);
 
-  const exists = documents.find(d => d.id === id);
-  if (exists) {
-    return res.status(400).json({ error: 'ID đã tồn tại' });
-  }
-
-  const newDoc = { id, title, content };
-  documents.push(newDoc);
-  index.add(newDoc);
-  saveDocuments();
-
-  res.json({ message: '✅ Đã thêm tài liệu mới', data: newDoc });
+    } catch (error) {
+        console.error("Lỗi API Delete Document:", error);
+        res.status(500).json({ error: "Lỗi máy chủ khi xóa tài liệu" });
+    }
 });
 
-// ==========================
-// ✏️ API: CẬP NHẬT TÀI LIỆU
-// ==========================
-app.put('/api/update/:id', (req, res) => {
-  const id = parseInt(req.params.id);
-  const doc = documents.find(d => d.id === id);
-  if (!doc) return res.status(404).json({ error: 'Không tìm thấy tài liệu' });
-
-  // Cập nhật dữ liệu
-  doc.title = req.body.title || doc.title;
-  doc.content = req.body.content || doc.content;
-  index.update(id, doc);
-  saveDocuments();
-
-  res.json({ message: '🔄 Đã cập nhật tài liệu', data: doc });
-});
-
-// ==========================
-// 🗑️ API: XÓA TÀI LIỆU
-// ==========================
-app.delete('/api/remove/:id', (req, res) => {
-  const id = parseInt(req.params.id);
-  const found = documents.find(d => d.id === id);
-  if (!found) return res.status(404).json({ error: 'Không tìm thấy tài liệu' });
-
-  documents = documents.filter(d => d.id !== id);
-  index.remove(id);
-  saveDocuments();
-
-  res.json({ message: `🗑️ Đã xóa tài liệu có id=${id}` });
-});
-
-// ==========================
-// 📊 API: THỐNG KÊ HỆ THỐNG
-// ==========================
-app.get('/api/stats', (req, res) => {
-  res.json({
-    totalDocs: documents.length,
-    memoryMB: (process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2),
-    uptimeSec: process.uptime().toFixed(1),
-    cacheSize: cache.size,
-    indexType: index.constructor.name,
-  });
-});
-
-// ==========================
-// 🏠 TRANG CHỦ (GIAO DIỆN)
-// ==========================
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
-});
-
-// ==========================
-// 🚀 KHỞI ĐỘNG SERVER
-// ==========================
-app.listen(PORT, () => {
-  console.log(`✅ Server chạy tại: http://localhost:${PORT}`);
+// === KHỞI ĐỘNG SERVER VÀ ĐỒNG BỘ INDEX ===
+app.listen(PORT, async () => {
+    console.log(`🚀 Server đang chạy tại http://localhost:${PORT}`);
+    await populateIndex();
 });
