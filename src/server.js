@@ -100,14 +100,14 @@ app.get('/api/search', (req, res) => {
             fuzzy: 1,
             highlight: "<b>$1</b>"
         });
-        const uniqueResults = {};
-        searchResults.forEach(result => {
-            result.result.forEach(doc => {
-                // Kết quả bây giờ sẽ chứa cả doc gốc và highlight
-                uniqueResults[doc.id] = { doc: doc.doc, highlight: doc.highlight };
-            });
-        });
-        res.json(Object.values(uniqueResults));
+
+        // FlexSearch với `enrich: true` thường trả về một mảng kết quả duy nhất trong `result[0]`.
+        // Chúng ta có thể map trực tiếp qua nó để lấy document và highlight.
+        const finalResults = searchResults[0]?.result.map(item => ({
+            doc: item.doc,
+            highlight: item.highlight
+        })) || [];
+        res.json(finalResults);
     } catch (error) {
         console.error("Lỗi API Search:", error);
         res.status(500).json({ error: "Lỗi máy chủ khi tìm kiếm" });
