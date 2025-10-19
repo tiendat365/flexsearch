@@ -40,10 +40,15 @@ async function seedDatabase() {
         const count = await Document.countDocuments();
         if (count === 0) {
             console.log('🌱 Cơ sở dữ liệu trống, đang thêm dữ liệu mẫu...');
-            const data = await fs.readFile('./data/movies.json', 'utf-8');
-            const sampleDocs = JSON.parse(data).map(({ id, ...rest }) => rest); // Bỏ trường 'id' cũ
+            // Sử dụng import() động để tải ES Module từ CommonJS module.
+            // Hàm này trả về một Promise, nên ta dùng await.
+            const dataModule = await import('../public/data.js');
+            const movieTitles = dataModule.default;
+
+            // Chuyển đổi mỗi tiêu đề phim thành một document để lưu vào DB
+            const sampleDocs = movieTitles.map(title => ({ title: title, content: title }));
             await Document.insertMany(sampleDocs);
-            console.log('✅ Đã thêm dữ liệu mẫu thành công.');
+            console.log(`✅ Đã thêm ${sampleDocs.length} phim mẫu từ data.js thành công.`);
         }
     } catch (error) {
         console.error('❌ Lỗi khi thêm dữ liệu mẫu:', error);
@@ -73,7 +78,8 @@ async function populateIndex() {
 
         const allDocs = await Document.find({});
         allDocs.forEach(doc => {
-            index.add({ ...doc.toObject(), _id: doc._id.toString() });
+            // FlexSearch Document sẽ tự động xử lý document từ Mongoose
+            index.add(doc.toObject());
         });
         console.log(`✅ Đồng bộ thành công ${allDocs.length} tài liệu.`);
     } catch (error) {
@@ -149,7 +155,8 @@ app.post('/api/documents', async (req, res) => {
         res.status(201).json(newDoc);
         
         // Cập nhật index trong nền
-        index.add({ ...newDoc.toObject(), _id: newDoc._id.toString() });
+        // Tương tự, chỉ cần truyền document object
+        index.add(newDoc.toObject());
         console.log(`📝 Đã thêm tài liệu "${title}" vào DB và Index.`);
 
     } catch (error) {
@@ -168,7 +175,7 @@ app.put('/api/documents/:id', async (req, res) => {
         
         res.json(updatedDoc);
 
-        index.update({ ...updatedDoc.toObject(), _id: updatedDoc._id.toString() });
+        index.update(updatedDoc.toObject());
         console.log(`🔄 Đã cập nhật tài liệu "${updatedDoc.title}" trong DB và Index.`);
 
     } catch (error) {
@@ -196,6 +203,24 @@ app.delete('/api/documents/:id', async (req, res) => {
     }
 });
 
+// API Kiểm tra "sức khỏe" của ứng dụng và DB
+app.get('/api/health', (req, res) => {
+    const dbState = mongoose.connection.readyState;
+    // readyState: 0 = disconnected, 1 = connected, 2 = connecting, 3 = disconnecting
+    const isConnected = dbState === 1;
+
+    if (isConnected) {
+        res.status(200).json({
+            status: 'UP',
+            db: 'connected'
+        });
+    } else {
+        res.status(503).json({ // 503 Service Unavailable
+            status: 'DOWN',
+            db: `state: ${mongoose.STATES[dbState]}`
+        });
+    }
+});
 // === KHỞI ĐỘNG SERVER ===
 async function startServer() {
     try {
