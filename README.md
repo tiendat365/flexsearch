@@ -1,6 +1,6 @@
 # 🚀 Hướng dẫn Cài đặt và Chạy Dự án FlexSearch
 
-Đây là hướng dẫn chi tiết từng bước để cài đặt và khởi chạy **ứng dụng tìm kiếm tài liệu FlexSearch**, nay đã được **nâng cấp để sử dụng cơ sở dữ liệu MongoDB**.
+Đây là hướng dẫn chi tiết từng bước để cài đặt và khởi chạy **ứng dụng tìm kiếm phim FlexSearch**, được xây dựng với Node.js, Express và MongoDB.
 
 ---
 
@@ -19,4 +19,3 @@ Trước khi bắt đầu, hãy đảm bảo bạn đã cài đặt:
 ### 🔹 Bước 1: Chuẩn bị Thư mục và Tệp tin
 
 1. **Tạo thư mục dự án**  
-

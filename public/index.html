@@ -1,19 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, minimum-scale=1, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, shrink-to-fit=no, minimal-ui">
     <title>Demo: Auto-Complete</title>
     <style>
         :root {
             --background-color: #f0f2f5;
             --container-bg: #ffffff;
+            --container-bg-transparent: rgba(255, 255, 255, 0);
             --text-color: #1c1e21;
             --placeholder-color: #8a8d91;
             --border-color: #ddd;
             --highlight-bg: #e7f3ff;
             --highlight-text: #1877f2;
-            --shadow-color: rgba(0, 0, 0, 0.1);
+            --shadow-color: rgba(0, 0, 0, 0.15);
         }
 
         body{
@@ -32,41 +33,40 @@
             max-width: 580px;
         }
 
-        #header{
+        .search-wrapper {
             position: relative;
-            display: flex;
-            justify-content: flex-start;
-            flex-direction: row;
-            align-items: center;
-            z-index: 1;
+            width: 100%;
+            /* Đặt chiều cao cho wrapper để icon có thể căn giữa */
+            height: 44px; 
         }
 
         .search-icon {
             position: absolute;
             top: 50%;
-            left: 20px;
+            left: 18px;
+            /* 
+             * Thêm z-index để đảm bảo icon nằm trên các input
+             * vốn cũng đang có position: absolute.
+             */
+            z-index: 2;
             transform: translateY(-50%);
-            z-index: 2; /* Ensure icon is above the input */
             color: var(--placeholder-color);
-            pointer-events: none; /* Allow clicks to pass through to the input */
+            pointer-events: none;
         }
 
         input[type="text"]{
             width: 100%;
             border: 1px solid var(--border-color);
-            border-radius: 20px;
+            border-radius: 24px;
             outline: none;
-            background-color: transparent;
-            position: absolute;
             -webkit-appearance: none;
-            z-index: 1;
             font-size: 1em;
-            padding: 10px 20px 10px 50px; /* Add left padding for icon */
+            padding: 12px 20px 12px 50px;
             box-sizing: border-box;
             transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
         }
 
-        #userinput {
+        #userinput, #autocomplete {
             background-color: var(--container-bg);
         }
         #userinput:focus {
@@ -74,25 +74,33 @@
             box-shadow: 0 0 0 2px var(--highlight-bg);
         }
 
+        #autocomplete, #userinput {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
         #autocomplete{
             color: var(--placeholder-color);
-            background-color: transparent;
+            background-color: var(--container-bg-transparent);
             pointer-events: none;
         }
 
-        #select-prev,
-        #select-next{
-            z-index: 0;
-        }
-
         #suggestions{
-            position: relative;
-            top: 15px; /* Space between input and suggestions */
             background-color: var(--container-bg);
             border-radius: 8px;
             box-shadow: 0 2px 12px var(--shadow-color);
-            overflow: hidden;
-            margin-top: 40px; /* Height of the input box */
+            margin-top: 50px; /* Height of the input box + space */
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+        }
+
+        #suggestions.visible {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
         }
 
         #suggestions div{
@@ -102,7 +110,10 @@
             white-space: nowrap;
             text-overflow: ellipsis;
             cursor: pointer;
-            transition: background-color 0.2s ease;
+        }
+
+        #suggestions div:hover{
+            background-color: var(--highlight-bg);
         }
 
         #suggestions div:last-child {
@@ -123,37 +134,31 @@
             text-align: center;
         }
 
-        label{
-            width: 100px;
-            height: 42px; /* Match input height */
-            display: flex;
-            align-items: center;
-            margin: 0 10px;
-            font-size: 0.9em;
-            color: var(--placeholder-color);
-            flex-shrink: 0; /* Prevent label from shrinking */
-        }
-
         @media only screen and (max-width: 600px) {
             body{
                 font-size: 14px;
                 margin: 10px;
             }
+            .search-wrapper {
+                /* Điều chỉnh chiều cao cho màn hình nhỏ */
+                height: 40px;
+            }
+            input[type="text"] {
+                padding-top: 10px;
+                padding-bottom: 10px;
+            }
         }
+
     </style>
 </head>
 <body>
 <div class="search-container">
-    <div id="header">
-        <form style="position: relative; width: 100%;" role="search">
+    <div class="search-wrapper">
             <span class="search-icon">
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
             </span>
-            <input type="text" id="select-prev" tabindex="1">
-            <input type="text" id="autocomplete" readonly>
-            <input type="text" id="userinput" tabindex="2" placeholder="Search by movie title ..." autocorrect="off" spellcheck="false" autocomplete="off" autofocus>
-            <input type="text" id="select-next" tabindex="3">
-        </form>
+            <input type="text" id="autocomplete" readonly disabled>
+            <input type="text" id="userinput" placeholder="Tìm kiếm phim..." autocorrect="off" spellcheck="false" autocomplete="off" autofocus>
     </div>
     <div id="suggestions"></div>
 </div>
@@ -170,71 +175,57 @@
     // 8. Document Index (Field-Search)
     // 9. Keyboard Navigation
 
-    import { Document } from "https://cdn.jsdelivr.net/gh/nextapps-de/flexsearch@master/dist/flexsearch.compact.module.min.js";
-    import data from "https://cdn.jsdelivr.net/gh/nextapps-de/flexsearch@master/demo/data/movies.js";
-
-    // for "Result Highlighting" it requires the usage of a Document Index
-    // also when just adding id-content-pairs to a single index
-    const index = new Document({
-        document: {
-            // storing documents is required in this example
-            store: true,
-            index: [{
-                field: "title",
-                // important: a forward tokenizer is minimum
-                // required by an instant search
-                tokenize: "forward"
-            }]
-        }
-    });
-
-    // The movies.js data used in this example is an array of strings.
-    // Since result highlighting needs a Document Index, the data
-    // has to be simply upgraded to a pseudo document.
-
-    for(let i = 0; i < data.length; i++){
-        // pass a json-like object
-        index.add(i, {
-            "title": data[i]
-        });
-    }
-
     const suggestions = document.getElementById("suggestions");
     const autocomplete = document.getElementById("autocomplete");
     const userinput = document.getElementById("userinput");
-    const select_prev = document.getElementById("select-prev");
-    const select_next = document.getElementById("select-next");
     let results = [];
-    let iterate = 0;
+    let iterate = -1; // Bắt đầu từ -1 để không có mục nào được chọn ban đầu
+    let debounceTimer;
 
-    userinput.addEventListener("input", show_results, true);
-    userinput.addEventListener("keyup", accept_autocomplete, true);
+    // Thay vì gọi show_results ngay lập tức, chúng ta sẽ gọi hàm debounce
+    userinput.addEventListener("input", () => {
+        // Xóa bộ đếm thời gian cũ nếu người dùng vẫn đang gõ
+        clearTimeout(debounceTimer);
+        // Đặt một bộ đếm thời gian mới
+        debounceTimer = setTimeout(() => {
+            show_results();
+        }, 150); // Chờ 150ms sau lần gõ phím cuối cùng mới tìm kiếm
+    }, true);
+
     userinput.addEventListener("keydown", key_handler, true);
     suggestions.addEventListener("click", accept_suggestion, true);
 
-    select_prev.addEventListener("focus", function(){
-        iterate_selected({ key: "ArrowUp" });
-        userinput.focus();
-    }, true);
+    // Thêm một trình xử lý sự kiện để ẩn gợi ý khi người dùng nhấp ra ngoài
+    document.addEventListener("click", (event) => {
+        if (!event.target.closest('.search-container')) {
+            hide_suggestions();
+        }
+    });
 
-    select_next.addEventListener("focus", function(){
-        iterate_selected({ key: "ArrowDown" });
-        userinput.focus();
-    }, true);
+    async function show_results(){
+        const query = userinput.value;
+        if (!query) {
+            results = [];
+            suggestions.innerHTML = "";
+            suggestions.classList.remove("visible");
+            update_autocomplete();
+            return;
+        }
 
-    function show_results(){
+        try {
+            // Gọi API backend để tìm kiếm. Dùng đường dẫn tương đối vì HTML và API cùng một server.
+            const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+            results = await response.json();
+        } catch (error) {
+            console.error("Lỗi khi tìm kiếm:", error);
+            results = [];
+        }
 
-        // the cache is a perfect addition
-        // for an instant search on keypress
-
-        results = userinput.value ? index.searchCache({
-            query: userinput.value,
-            suggest: true, // Always suggest
-            limit: 25,
-            pluck: "title",
-            enrich: true,
-            highlight: "<b>$1</b>"
-        }) : [];
+        if (results.length > 0) {
+            suggestions.classList.add("visible");
+        } else {
+            suggestions.classList.remove("visible");
+        }
 
         let entry, childs = suggestions.childNodes;
         let i = 0, len = results.length;
@@ -248,78 +239,86 @@
                 suggestions.appendChild(entry);
             }
 
-            entry.innerHTML = results[i].highlight; //data[results[i]];
+            // Kết quả từ backend có dạng { doc: {title: ...}, highlight: "<b>...</b>" }
+            // Ưu tiên hiển thị highlight, nếu không có thì hiển thị title thường
+            const resultItem = results[i];
+            entry.innerHTML = resultItem.highlight || resultItem.doc.title;
         }
 
         while(childs.length > len){
             suggestions.removeChild(childs[i]);
         }
 
-        select_result(0);
-        iterate_selected();
+        iterate = -1;
+        if (results.length > 0) {
+            select_result(0);
+        }
+        update_autocomplete();
     }
 
     function key_handler(event){
         const key = event.key;
         if(key === "ArrowUp" || key === "ArrowDown"){
-            iterate_selected(event);
+            if(key === "ArrowUp"){
+                if(iterate > 0) select_result(iterate - 1);
+            } else { // ArrowDown
+                if(iterate < results.length - 1) select_result(iterate + 1);
+            }
+            update_autocomplete();
             event.preventDefault();
-        } else {
-            accept_autocomplete(event);
+        } else if (key === "Enter" || key === "Tab" || key === "ArrowRight"){
+            if(autocomplete.value && autocomplete.value !== userinput.value){
+                accept_autocomplete();
+                event.preventDefault();
+            }
         }
     }
 
-    function iterate_selected(){
-        let index = iterate;
-        if(event.key === "ArrowUp"){
-            if(iterate > 0) select_result(--index);
-        } else { // ArrowDown
-            if(iterate < results.length - 1){
-                select_result(++index);
-            }
-        }
-
+    function update_autocomplete(){
         let value = userinput.value;
-        let first_result = results && results[index] && data[results[index].id];
-        let match = first_result && first_result.toLowerCase().indexOf(value.toLowerCase());
+        let current_result_text = results[iterate] && results[iterate].doc && results[iterate].doc.title;
+        let match = current_result_text && current_result_text.toLowerCase().startsWith(value.toLowerCase());
 
-        if(first_result && (match > -1)){
-            autocomplete.value = value + first_result.substring(match + value.length);
-            autocomplete.current = first_result;
+        if(match){
+            autocomplete.value = value + current_result_text.substring(value.length);
         }
         else{
-            autocomplete.value = autocomplete.current = value;
+            autocomplete.value = "";
         }
+    }
+
+    function hide_suggestions(){
+        suggestions.classList.remove("visible");
+        autocomplete.value = "";
+        iterate = -1;
     }
 
     function select_result(index){
-
-        let node = suggestions.childNodes[iterate];
-        node && (node.style.backgroundColor = "");
+        if(iterate > -1){
+            let previous_node = suggestions.childNodes[iterate];
+            previous_node && (previous_node.style.backgroundColor = "");
+        }
 
         iterate = index;
 
-        node = suggestions.childNodes[iterate];
+        const node = suggestions.childNodes[iterate];
         node && (node.style.backgroundColor = "var(--highlight-bg)");
     }
 
-    function accept_autocomplete(event){
-
-        const key = (event || window.event).keyCode;
-
-        if(key === 13 || key === 39) {
-            const node = suggestions.childNodes[iterate];
-            if(!node) return;
-            userinput.value = autocomplete.value = node.textContent;
-            suggestions.textContent = "";
-        }
+    function accept_autocomplete(){
+        userinput.value = autocomplete.value;
+        hide_suggestions();
+        results = [];
+        // Focus lại input để người dùng có thể tiếp tục
+        userinput.focus();
     }
 
     function accept_suggestion(event){
-
-        const target = (event || window.event).target;
-        userinput.value = autocomplete.value = target.textContent;
-        suggestions.textContent = "";
+        event.stopPropagation();
+        // ensure we're acting on the suggestion div, not a child like <b>
+        const target = event.target.closest('div');
+        userinput.value = target.textContent;
+        hide_suggestions();
 
         return false;
     }

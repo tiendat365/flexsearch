@@ -13,6 +13,8 @@ const PORT = process.env.PORT || 5000;
 // === CẤU HÌNH MIDDLEWARE ===
 app.use(cors());
 app.use(express.json());
+// Phục vụ các tệp tĩnh (HTML, CSS, JS phía client) từ thư mục 'public'
+app.use(express.static('public'));
 
 // === KẾT NỐI VỚI MONGODB ===
 // Sử dụng chuỗi kết nối từ file .env
@@ -29,17 +31,8 @@ const vietnameseStopwords = [
     "đến", "với", "để", "các", "như", "này", "đã", "về", "thì", "ở"
 ];
 
-// === KHỞI TẠO INDEX CỦA FLEXSEARCH ===
-const index = new FlexSearch.Document({
-    document: {
-        id: "_id",
-        index: ["title", "content"]
-    },
-    // Thêm bộ lọc từ dừng
-    filter: vietnameseStopwords,
-    tokenize: "full",
-    encoder: 'icase'
-});
+// Khai báo index ở đây nhưng sẽ khởi tạo trong hàm populateIndex
+let index;
 
 // === HÀM THÊM DỮ LIỆU MẪU (SEEDING) ===
 async function seedDatabase() {
@@ -47,7 +40,7 @@ async function seedDatabase() {
         const count = await Document.countDocuments();
         if (count === 0) {
             console.log('🌱 Cơ sở dữ liệu trống, đang thêm dữ liệu mẫu...');
-            const data = await fs.readFile('./data/documents.json', 'utf-8');
+            const data = await fs.readFile('./data/movies.json', 'utf-8');
             const sampleDocs = JSON.parse(data).map(({ id, ...rest }) => rest); // Bỏ trường 'id' cũ
             await Document.insertMany(sampleDocs);
             console.log('✅ Đã thêm dữ liệu mẫu thành công.');
@@ -60,9 +53,25 @@ async function seedDatabase() {
 async function populateIndex() {
     try {
         console.log("🔄 Đang đồng bộ dữ liệu từ MongoDB vào Index...");
+        // Khởi tạo một index mới, trống mỗi khi hàm này được gọi
+        index = new FlexSearch.Document({
+            document: {
+                id: "_id",
+                // Tăng trọng số cho tiêu đề
+                index: [
+                    {
+                        field: "title",
+                        boost: 2 // Ưu tiên kết quả ở tiêu đề gấp đôi
+                    },
+                    "content" // Giữ nguyên trọng số cho nội dung
+                ]
+            },
+            filter: vietnameseStopwords,
+            tokenize: "full",
+            encoder: 'icase'
+        });
+
         const allDocs = await Document.find({});
-        // Xóa index cũ trước khi thêm mới để tránh trùng lặp
-        await index.clear();
         allDocs.forEach(doc => {
             index.add({ ...doc.toObject(), _id: doc._id.toString() });
         });
@@ -83,11 +92,19 @@ app.get('/api/search', (req, res) => {
         if (!query) {
              return res.status(400).json({ error: "Thiếu tham số tìm kiếm 'q'" });
         }
-        const searchResults = index.search(query, { enrich: true, limit: 10, fuzzy: 1 });
+        // Thêm enrich: true để lấy toàn bộ document
+        // Thêm highlight để Flexsearch tự động bọc các từ khóa khớp với tag <b>
+        const searchResults = index.search(query, { 
+            enrich: true, 
+            limit: 10, 
+            fuzzy: 1,
+            highlight: "<b>$1</b>"
+        });
         const uniqueResults = {};
         searchResults.forEach(result => {
             result.result.forEach(doc => {
-                uniqueResults[doc.id] = doc.doc;
+                // Kết quả bây giờ sẽ chứa cả doc gốc và highlight
+                uniqueResults[doc.id] = { doc: doc.doc, highlight: doc.highlight };
             });
         });
         res.json(Object.values(uniqueResults));
@@ -187,14 +204,15 @@ async function startServer() {
         await mongoose.connect(dbURI);
         console.log('✅ Đã kết nối thành công với MongoDB!');
 
-        // Thêm dữ liệu mẫu nếu cần
+        // 2. Thêm dữ liệu mẫu nếu cần
         await seedDatabase();
 
-        // 2. Sau khi kết nối thành công, mới khởi động Express server
+        // 3. Đồng bộ dữ liệu vào FlexSearch index và CHỜ cho đến khi hoàn tất
+        await populateIndex();
+
+        // 4. CHỈ SAU KHI MỌI THỨ SẴN SÀNG, mới khởi động Express server
         app.listen(PORT, async () => {
             console.log(`🚀 Server đang chạy tại http://localhost:${PORT}`);
-            // 3. Đồng bộ dữ liệu vào FlexSearch index
-            await populateIndex();
         });
     } catch (error) {
         console.error('❌ Không thể kết nối tới MongoDB. Server không thể khởi động.', error);
