@@ -1,7 +1,6 @@
 const express = require('express');
 const cors = require('cors');
 const fs = require('fs').promises;
-const FlexSearch = require('flexsearch');
 const mongoose = require('mongoose');
 require('dotenv').config(); // Tải các biến môi trường từ file .env
 
@@ -33,25 +32,53 @@ const vietnameseStopwords = [
 
 // Khai báo index ở đây nhưng sẽ khởi tạo trong hàm populateIndex
 let index;
+// Khai báo biến để giữ class Document của FlexSearch
+let FlexSearchDocument;
+
 
 // === HÀM THÊM DỮ LIỆU MẪU (SEEDING) ===
 async function seedDatabase() {
     try {
-        const count = await Document.countDocuments();
-        if (count === 0) {
-            console.log('🌱 Cơ sở dữ liệu trống, đang thêm dữ liệu mẫu...');
-            // Sử dụng import() động để tải ES Module từ CommonJS module.
-            // Hàm này trả về một Promise, nên ta dùng await.
-            const dataModule = await import('../public/data.js');
-            const movieTitles = dataModule.default;
-
-            // Chuyển đổi mỗi tiêu đề phim thành một document để lưu vào DB
-            const sampleDocs = movieTitles.map(title => ({ title: title, content: title }));
-            await Document.insertMany(sampleDocs);
-            console.log(`✅ Đã thêm ${sampleDocs.length} phim mẫu từ data.js thành công.`);
+        console.log('🌱 Bắt đầu quá trình seeding/cập nhật dữ liệu...');
+        // Sử dụng import() động để tải ES Module từ CommonJS module.
+        const dataModule = await import('../public/data.js');
+        const movieTitles = dataModule.default;
+ 
+        // Thêm một vài phim mới để minh họa
+        movieTitles.push(
+            "Mắt Biếc",
+            "Bố Già",
+            "Hai Phượng",
+            "Em Chưa 18",
+            "Cua Lại Vợ Bầu",
+            "Tiệc Trăng Máu",
+            "Gái Già Lắm Chiêu",
+            "Tháng Năm Rực Rỡ",
+            "Tôi Thấy Hoa Vàng Trên Cỏ Xanh",
+            "Lật Mặt: 48H",
+            "Chìa Khóa Trăm Tỷ",
+            "Nhà Bà Nữ",
+            "Mai",
+            "Song Lang",
+            "Chị Chị Em Em",
+            "Người Bất Tử",
+            "Trạng Tí Phiêu Lưu Ký"
+        );
+ 
+        const operations = movieTitles.map(title => ({
+            updateOne: {
+                filter: { title: title }, // Tìm document theo tiêu đề
+                update: { $set: { title: title, content: title } }, // Dữ liệu để cập nhật/thêm mới
+                upsert: true // Nếu không tìm thấy, hãy tạo một document mới
+            }
+        }));
+ 
+        if (operations.length > 0) {
+            const result = await Document.bulkWrite(operations);
+            console.log(`✅ Seeding hoàn tất. Đã thêm mới: ${result.upsertedCount}, đã tồn tại: ${result.matchedCount}.`);
         }
     } catch (error) {
-        console.error('❌ Lỗi khi thêm dữ liệu mẫu:', error);
+        console.error('❌ Lỗi trong quá trình seeding dữ liệu:', error);
     }
 }
 // === HÀM ĐỒNG BỘ DỮ LIỆU TỪ DB VÀO INDEX ===
@@ -59,7 +86,7 @@ async function populateIndex() {
     try {
         console.log("🔄 Đang đồng bộ dữ liệu từ MongoDB vào Index...");
         // Khởi tạo một index mới, trống mỗi khi hàm này được gọi
-        index = new FlexSearch.Document({
+        index = new FlexSearchDocument({
             document: {
                 id: "_id",
                 // Tăng trọng số cho tiêu đề
@@ -72,14 +99,16 @@ async function populateIndex() {
                 ]
             },
             filter: vietnameseStopwords,
-            tokenize: "full",
-            encoder: 'icase'
+            tokenize: "full"
         });
 
         const allDocs = await Document.find({});
         allDocs.forEach(doc => {
-            // FlexSearch Document sẽ tự động xử lý document từ Mongoose
-            index.add(doc.toObject());
+            // Sử dụng toJSON() thay vì toObject() để đảm bảo _id được chuyển thành chuỗi.
+            // Điều này giúp FlexSearch xử lý ID một cách nhất quán và tránh các lỗi tiềm ẩn
+            // liên quan đến kiểu dữ liệu ObjectId của Mongoose.
+            // toJSON() cũng tự động chuyển đổi các kiểu dữ liệu khác như Date thành chuỗi ISO.
+            index.add(doc.toJSON());
         });
         console.log(`✅ Đồng bộ thành công ${allDocs.length} tài liệu.`);
     } catch (error) {
@@ -93,32 +122,54 @@ async function populateIndex() {
 
 // API Tìm kiếm (dùng Index)
 app.get('/api/search', (req, res) => {
-    try {
-        const query = req.query.q;
-        if (!query) {
-             return res.status(400).json({ error: "Thiếu tham số tìm kiếm 'q'" });
-        }
-        // Thêm enrich: true để lấy toàn bộ document
-        // Thêm highlight để Flexsearch tự động bọc các từ khóa khớp với tag <b>
-        const searchResults = index.search(query, { 
-            enrich: true, 
-            limit: 10, 
-            fuzzy: 1,
-            highlight: "<b>$1</b>"
-        });
+  try {
+    const queryParams = req.query;
+    const searchQueries = [];
+    const searchOptions = {
+      enrich: true,
+      highlight: "<b>$1</b>",
+      // Mặc định, kết hợp các điều kiện bằng AND
+      // (kết quả phải khớp tất cả các trường được cung cấp)
+      bool: "and" 
+    };
 
-        // FlexSearch với `enrich: true` thường trả về một mảng kết quả duy nhất trong `result[0]`.
-        // Chúng ta có thể map trực tiếp qua nó để lấy document và highlight.
-        const finalResults = searchResults[0]?.result.map(item => ({
+    // Tách các tham số truy vấn thành các điều kiện tìm kiếm và các tùy chọn
+    for (const key in queryParams) {
+      if (Object.prototype.hasOwnProperty.call(queryParams, key)) {
+        const value = queryParams[key];
+        // Các tham số đặc biệt để điều khiển tìm kiếm
+        if (key === 'limit') {
+          searchOptions.limit = parseInt(value, 10) || 10;
+        } else if (key === 'fuzzy') {
+          searchOptions.fuzzy = parseInt(value, 10) || 0;
+        } else if (key === 'bool' && (value === 'and' || value === 'or')) {
+          searchOptions.bool = value;
+        } else if (key === 'q') { // Hỗ trợ tham số 'q' để tìm kiếm chung
+          searchQueries.push({ field: ['title', 'content'], query: value });
+        } else {
+          // Các tham số khác được coi là tìm kiếm theo trường cụ thể
+          searchQueries.push({ field: key, query: value });
+        }
+      }
+    }
+
+    if (searchQueries.length === 0) {
+      return res.status(400).json({ error: "Vui lòng cung cấp ít nhất một tham số tìm kiếm (ví dụ: q, title, content)." });
+    }
+
+    const searchResults = index.search(searchQueries, searchOptions);
+
+    const finalResults = (searchResults && searchResults.length > 0 && searchResults[0].result)
+      ? searchResults[0].result.map(item => ({
             doc: item.doc,
             highlight: item.highlight
-        })) || [];
+        })) : [];
         res.json(finalResults);
     } catch (error) {
         console.error("Lỗi API Search:", error);
         res.status(500).json({ error: "Lỗi máy chủ khi tìm kiếm" });
     }
-});
+  });
 
 // API Lấy tất cả tài liệu (CÓ PHÂN TRANG)
 app.get('/api/documents', async (req, res) => {
@@ -155,8 +206,7 @@ app.post('/api/documents', async (req, res) => {
         res.status(201).json(newDoc);
         
         // Cập nhật index trong nền
-        // Tương tự, chỉ cần truyền document object
-        index.add(newDoc.toObject());
+        index.add(newDoc.toJSON());
         console.log(`📝 Đã thêm tài liệu "${title}" vào DB và Index.`);
 
     } catch (error) {
@@ -175,7 +225,8 @@ app.put('/api/documents/:id', async (req, res) => {
         
         res.json(updatedDoc);
 
-        index.update(updatedDoc.toObject());
+        // Cập nhật index trong nền. Chỉ sử dụng toJSON() để đảm bảo tính nhất quán.
+        index.update(updatedDoc.toJSON());
         console.log(`🔄 Đã cập nhật tài liệu "${updatedDoc.title}" trong DB và Index.`);
 
     } catch (error) {
@@ -194,7 +245,7 @@ app.delete('/api/documents/:id', async (req, res) => {
         
         res.json({ message: "Xóa thành công" });
         
-        index.remove(req.params.id.toString());
+        index.remove(req.params.id);
         console.log(`🗑️ Đã xóa tài liệu ID "${req.params.id}" khỏi DB và Index.`);
 
     } catch (error) {
@@ -224,13 +275,18 @@ app.get('/api/health', (req, res) => {
 // === KHỞI ĐỘNG SERVER ===
 async function startServer() {
     try {
+        // 0. Tải FlexSearch Document class bằng import() động
+        const FlexSearchModule = await import('flexsearch');
+        FlexSearchDocument = FlexSearchModule.Document;
+
         // 1. Kết nối tới MongoDB và CHỜ cho đến khi hoàn tất
         const dbURI = process.env.MONGODB_URI || "mongodb://localhost:27017/flexsearchDB";
         await mongoose.connect(dbURI);
         console.log('✅ Đã kết nối thành công với MongoDB!');
 
         // 2. Thêm dữ liệu mẫu nếu cần
-        await seedDatabase();
+        // Tạm thời vô hiệu hóa việc tự động thêm dữ liệu khi khởi động
+        // await seedDatabase();
 
         // 3. Đồng bộ dữ liệu vào FlexSearch index và CHỜ cho đến khi hoàn tất
         await populateIndex();

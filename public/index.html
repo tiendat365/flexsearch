@@ -116,6 +116,11 @@
             background-color: var(--highlight-bg);
         }
 
+        #suggestions div.selected {
+            background-color: var(--highlight-bg);
+            /* Thêm các style khác nếu muốn */
+        }
+
         #suggestions div:last-child {
             border-bottom: none;
         }
@@ -181,9 +186,16 @@
     let results = [];
     let iterate = -1; // Bắt đầu từ -1 để không có mục nào được chọn ban đầu
     let debounceTimer;
+    let isAcceptingSuggestion = false; // Cờ để kiểm soát việc gọi lại show_results
 
     // Thay vì gọi show_results ngay lập tức, chúng ta sẽ gọi hàm debounce
     userinput.addEventListener("input", () => {
+        // Nếu sự kiện input được kích hoạt do chấp nhận gợi ý, bỏ qua
+        if (isAcceptingSuggestion) {
+            isAcceptingSuggestion = false;
+            return;
+        }
+
         // Xóa bộ đếm thời gian cũ nếu người dùng vẫn đang gõ
         clearTimeout(debounceTimer);
         // Đặt một bộ đếm thời gian mới
@@ -227,27 +239,20 @@
             suggestions.classList.remove("visible");
         }
 
-        let entry, childs = suggestions.childNodes;
-        let i = 0, len = results.length;
-
-        for(; i < len; i++){
-
-            entry = childs[i];
-
-            if(!entry){
-                entry = document.createElement("div");
-                suggestions.appendChild(entry);
-            }
-
+        // Sử dụng DocumentFragment để tối ưu hóa việc cập nhật DOM
+        const fragment = document.createDocumentFragment();
+        for (const resultItem of results) {
+            const entry = document.createElement("div");
             // Kết quả từ backend có dạng { doc: {title: ...}, highlight: "<b>...</b>" }
             // Ưu tiên hiển thị highlight, nếu không có thì hiển thị title thường
-            const resultItem = results[i];
             entry.innerHTML = resultItem.highlight || resultItem.doc.title;
+            fragment.appendChild(entry);
         }
 
-        while(childs.length > len){
-            suggestions.removeChild(childs[i]);
-        }
+        // Xóa nội dung cũ và thêm nội dung mới chỉ trong một thao tác
+        suggestions.innerHTML = "";
+        suggestions.appendChild(fragment);
+
 
         iterate = -1;
         if (results.length > 0) {
@@ -294,19 +299,21 @@
     }
 
     function select_result(index){
-        if(iterate > -1){
-            let previous_node = suggestions.childNodes[iterate];
-            previous_node && (previous_node.style.backgroundColor = "");
+        // Xóa class 'selected' khỏi tất cả các mục con trước
+        const suggestionItems = suggestions.children;
+        for (const item of suggestionItems) {
+            item.classList.remove("selected");
         }
 
         iterate = index;
 
-        const node = suggestions.childNodes[iterate];
-        node && (node.style.backgroundColor = "var(--highlight-bg)");
+        suggestionItems[iterate]?.classList.add("selected");
     }
 
     function accept_autocomplete(){
+        isAcceptingSuggestion = true; // Đặt cờ trước khi thay đổi value
         userinput.value = autocomplete.value;
+
         hide_suggestions();
         results = [];
         // Focus lại input để người dùng có thể tiếp tục
@@ -314,10 +321,14 @@
     }
 
     function accept_suggestion(event){
+        // Ngăn sự kiện click nổi bọt lên document, tránh việc hide_suggestions được gọi 2 lần
         event.stopPropagation();
+
         // ensure we're acting on the suggestion div, not a child like <b>
         const target = event.target.closest('div');
+        isAcceptingSuggestion = true; // Đặt cờ trước khi thay đổi value
         userinput.value = target.textContent;
+
         hide_suggestions();
 
         return false;
