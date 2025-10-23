@@ -33,8 +33,18 @@ const vietnameseStopwords = [
 // Khai báo index ở đây nhưng sẽ khởi tạo trong hàm populateIndex
 let index;
 
-
-
+// === HÀM HIGHLIGHT TỪ KHÓA ===
+function highlightText(text, query) {
+    if (!text || !query) return text;
+    
+    // Tạo regex để tìm từ khóa (case-insensitive)
+    const words = query.trim().split(/\s+/);
+    const pattern = words.map(word => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+    const regex = new RegExp(`(${pattern})`, 'gi');
+    
+    // Wrap từ khóa với thẻ <mark>
+    return text.replace(regex, '<mark>$1</mark>');
+}
 
 // === HÀM ĐỒNG BỘ DỮ LIỆU TỪ DB VÀO INDEX ===
 async function populateIndex() {
@@ -97,7 +107,7 @@ app.get('/api/search', (req, res) => {
     if (searchResults.length > 0 && searchResults[0].result) {
       results = searchResults[0].result.map(item => ({
         doc: item.doc,
-        highlight: item.doc.title
+        highlight: highlightText(item.doc.title, query)
       }));
     }
     
