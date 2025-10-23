@@ -277,7 +277,7 @@ async function startServer() {
     try {
         // 0. Tải FlexSearch Document class bằng import() động
         const FlexSearchModule = await import('flexsearch');
-        FlexSearchDocument = FlexSearchModule.Document;
+        FlexSearchDocument = FlexSearchModule.default.Document;
 
         // 1. Kết nối tới MongoDB và CHỜ cho đến khi hoàn tất
         const dbURI = process.env.MONGODB_URI || "mongodb://localhost:27017/flexsearchDB";
