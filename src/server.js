@@ -79,6 +79,17 @@ async function populateIndex() {
 // === ĐỊNH NGHĨA CÁC ĐƯỜNG DẪN API ===
 // ===================================
 
+// Hàm để highlight từ khóa tìm kiếm trong text
+function highlightText(text, query) {
+    if (!text || !query) return text;
+    
+    // Tạo regex để tìm từ khóa (case-insensitive)
+    const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    
+    // Thay thế từ khóa bằng version được bọc trong thẻ <b>
+    return text.replace(regex, '<b>$1</b>');
+}
+
 // API Tìm kiếm (dùng Index)
 app.get('/api/search', (req, res) => {
   try {
