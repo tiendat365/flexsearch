@@ -284,6 +284,11 @@ async function startServer() {
         await mongoose.connect(dbURI);
         console.log('✅ Đã kết nối thành công với MongoDB!');
 
+        // --- DEBUG: List all collections ---
+        const collections = await mongoose.connection.db.listCollections().toArray();
+        console.log('Collections found:', collections.map(c => c.name));
+        // --- END DEBUG ---
+
         // 2. Thêm dữ liệu mẫu nếu cần
         // Tạm thời vô hiệu hóa việc tự động thêm dữ liệu khi khởi động
         // await seedDatabase();
