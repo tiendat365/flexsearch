@@ -196,14 +196,6 @@ index = new FlexSearch.Document({
 });
 ```
 
-### Từ dừng tiếng Việt
-
-Ứng dụng sử dụng bộ từ dừng để cải thiện chất lượng tìm kiếm:
-```javascript
-["và", "là", "của", "trong", "cho", "có", "được", "một", "khi", "từ",
- "đến", "với", "để", "các", "như", "này", "đã", "về", "thì", "ở"]
-```
-
 ### Database Schema
 
 ```javascript
