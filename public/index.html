@@ -3,76 +3,178 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, minimum-scale=1, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, shrink-to-fit=no, minimal-ui">
-    <title>Demo: Auto-Complete</title>
+    <title>FlexSearch - Smart Movie Search</title>
     <style>
         :root {
-            --background-color: #f0f2f5;
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --background-color: #fafbfc;
+            --background-pattern: radial-gradient(circle at 25% 25%, #e3f2fd 0%, transparent 50%), 
+                                 radial-gradient(circle at 75% 75%, #f3e5f5 0%, transparent 50%);
             --container-bg: #ffffff;
+            --container-bg-glass: rgba(255, 255, 255, 0.85);
             --container-bg-transparent: rgba(255, 255, 255, 0);
-            --text-color: #1c1e21;
-            --placeholder-color: #8a8d91;
-            --border-color: #ddd;
-            --highlight-bg: #e7f3ff;
-            --highlight-text: #1877f2;
-            --shadow-color: rgba(0, 0, 0, 0.15);
+            --text-color: #2c3e50;
+            --text-secondary: #5a6c7d;
+            --placeholder-color: #95a5a6;
+            --border-color: #e1e8ed;
+            --highlight-bg: linear-gradient(90deg, #e3f2fd 0%, #f3e5f5 100%);
+            --highlight-text: #667eea;
+            --shadow-light: 0 4px 20px rgba(102, 126, 234, 0.1);
+            --shadow-medium: 0 8px 32px rgba(102, 126, 234, 0.15);
+            --shadow-heavy: 0 12px 40px rgba(102, 126, 234, 0.2);
+            --border-radius: 16px;
+            --border-radius-small: 12px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        body{
+        [data-theme="dark"] {
+            --background-color: #0f1419;
+            --background-pattern: radial-gradient(circle at 25% 25%, #1a237e 0%, transparent 50%), 
+                                 radial-gradient(circle at 75% 75%, #4a148c 0%, transparent 50%);
+            --container-bg: #1e2328;
+            --container-bg-glass: rgba(30, 35, 40, 0.9);
+            --text-color: #e1e8ed;
+            --text-secondary: #8899a6;
+            --placeholder-color: #657786;
+            --border-color: #2f3336;
+            --highlight-bg: linear-gradient(90deg, #1a237e 0%, #4a148c 100%);
+            --shadow-light: 0 4px 20px rgba(0, 0, 0, 0.3);
+            --shadow-medium: 0 8px 32px rgba(0, 0, 0, 0.4);
+            --shadow-heavy: 0 12px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
             padding: 0;
-            margin: 20px 10px;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", Helvetica, Arial, sans-serif;
             font-size: 16px;
-            background-color: var(--background-color);
+            background: var(--background-color);
+            background-image: var(--background-pattern);
+            background-attachment: fixed;
             color: var(--text-color);
             display: flex;
             justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding: 40px 20px;
+            transition: var(--transition);
+        }
+
+        .main-container {
+            width: 100%;
+            max-width: 800px;
+            position: relative;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            animation: fadeInUp 0.8s ease-out;
+        }
+
+        .header h1 {
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin: 0 0 16px 0;
+            letter-spacing: -0.02em;
+        }
+
+        .header p {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            margin: 0;
+            font-weight: 400;
+        }
+
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--container-bg-glass);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius-small);
+            padding: 12px;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            box-shadow: var(--shadow-light);
+            transition: var(--transition);
+            z-index: 1000;
+        }
+
+        .theme-toggle:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-medium);
         }
 
         .search-container {
             width: 100%;
-            max-width: 580px;
+            animation: fadeInUp 0.8s ease-out 0.2s both;
         }
 
         .search-wrapper {
             position: relative;
             width: 100%;
-            /* Đặt chiều cao cho wrapper để icon có thể căn giữa */
-            height: 44px; 
+            height: 56px;
+            margin-bottom: 24px;
         }
 
         .search-icon {
             position: absolute;
             top: 50%;
-            left: 18px;
-            /* 
-             * Thêm z-index để đảm bảo icon nằm trên các input
-             * vốn cũng đang có position: absolute.
-             */
+            left: 20px;
             z-index: 2;
             transform: translateY(-50%);
             color: var(--placeholder-color);
             pointer-events: none;
+            transition: var(--transition);
         }
 
-        input[type="text"]{
+        .search-wrapper:focus-within .search-icon {
+            color: var(--highlight-text);
+            transform: translateY(-50%) scale(1.1);
+        }
+
+        input[type="text"] {
             width: 100%;
-            border: 1px solid var(--border-color);
-            border-radius: 24px;
+            border: 2px solid var(--border-color);
+            border-radius: var(--border-radius);
             outline: none;
             -webkit-appearance: none;
             appearance: none;
-            font-size: 1em;
-            padding: 12px 20px 12px 50px;
+            font-size: 1.1rem;
+            font-weight: 500;
+            padding: 16px 24px 16px 60px;
             box-sizing: border-box;
-            transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+            background: var(--container-bg-glass);
+            backdrop-filter: blur(10px);
+            color: var(--text-color);
+            transition: var(--transition);
+            box-shadow: var(--shadow-light);
         }
 
         #userinput, #autocomplete {
-            background-color: var(--container-bg);
+            background: var(--container-bg-glass);
+            backdrop-filter: blur(10px);
         }
+
         #userinput:focus {
             border-color: var(--highlight-text);
-            box-shadow: 0 0 0 2px var(--highlight-bg);
+            box-shadow: var(--shadow-medium);
+            transform: translateY(-2px);
+        }
+
+        #userinput::placeholder {
+            color: var(--placeholder-color);
+            font-weight: 400;
         }
 
         #autocomplete, #userinput {
@@ -81,268 +183,710 @@
             left: 0;
         }
 
-        #autocomplete{
+        #autocomplete {
             color: var(--placeholder-color);
-            background-color: var(--container-bg-transparent);
+            background: var(--container-bg-transparent);
             pointer-events: none;
+            opacity: 0.6;
         }
 
-        #suggestions{
-            background-color: var(--container-bg);
-            border-radius: 8px;
-            box-shadow: 0 2px 12px var(--shadow-color);
-            margin-top: 50px; /* Height of the input box + space */
+        #suggestions {
+            background: var(--container-bg-glass);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-heavy);
+            margin-top: 8px;
             opacity: 0;
             visibility: hidden;
-            transform: translateY(-10px);
-            transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+            transform: translateY(-10px) scale(0.95);
+            transition: var(--transition);
+            overflow: hidden;
+            max-height: 400px;
+            overflow-y: auto;
         }
 
         #suggestions.visible {
             opacity: 1;
             visibility: visible;
-            transform: translateY(0);
+            transform: translateY(0) scale(1);
+            animation: slideIn 0.3s ease-out;
         }
 
-        #suggestions div{
-            padding: 12px 20px;
-            border-bottom: 1px solid var(--background-color);
+        #suggestions div {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border-color);
             overflow: hidden;
-            white-space: nowrap;
-            text-overflow: ellipsis;
             cursor: pointer;
+            transition: var(--transition);
+            position: relative;
+            font-weight: 500;
         }
 
-        #suggestions div:hover{
-            background-color: var(--highlight-bg);
+        #suggestions div:hover {
+            background: var(--highlight-bg);
+            transform: translateX(4px);
         }
 
         #suggestions div.selected {
-            background-color: var(--highlight-bg);
-            /* Thêm các style khác nếu muốn */
+            background: var(--highlight-bg);
+            border-left: 4px solid var(--highlight-text);
+            padding-left: 20px;
         }
 
         #suggestions div:last-child {
             border-bottom: none;
         }
 
-        #suggestions b{
-            color: var(--highlight-text);
-            font-weight: 600;
+        #suggestions div::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 0;
+            height: 100%;
+            background: var(--primary-gradient);
+            transition: width 0.3s ease;
+            z-index: -1;
         }
 
-        #suggestions:empty:before{
-            content: "No results found";
+        #suggestions div:hover::before {
+            width: 4px;
+        }
+
+        #suggestions b, mark {
+            color: var(--highlight-text);
+            font-weight: 700;
+        }
+
+        #suggestions:empty:before {
+            content: "🔍 Không tìm thấy kết quả nào";
             display: block;
-            padding: 20px;
-            font-size: 0.9em;
+            padding: 40px 24px;
+            font-size: 1rem;
             color: var(--placeholder-color);
             text-align: center;
+            font-style: italic;
         }
 
-        /* Highlight cho từ khóa tìm kiếm */
+        /* Enhanced highlight styling */
         mark {
-            background-color: #ffeb3b;
-            color: #000;
-            padding: 2px 4px;
-            border-radius: 2px;
-            font-weight: 600;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            padding: 2px 0;
+            border-radius: 4px;
+            font-weight: 700;
         }
 
-        @media only screen and (max-width: 600px) {
-            body{
-                font-size: 14px;
-                margin: 10px;
+        /* Loading animation */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid var(--border-color);
+            border-radius: 50%;
+            border-top-color: var(--highlight-text);
+            animation: spin 1s ease-in-out infinite;
+            margin-left: 12px;
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
             }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px) scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .search-stats {
+            padding: 12px 24px;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border-color);
+            background: var(--background-color);
+            font-weight: 500;
+        }
+
+        /* Responsive Design */
+        @media only screen and (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .header p {
+                font-size: 1rem;
+            }
+            
             .search-wrapper {
-                /* Điều chỉnh chiều cao cho màn hình nhỏ */
-                height: 40px;
+                height: 52px;
             }
+            
             input[type="text"] {
-                padding-top: 10px;
-                padding-bottom: 10px;
+                font-size: 1rem;
+                padding: 14px 20px 14px 56px;
             }
+            
+            .search-icon {
+                left: 18px;
+            }
+            
+            #suggestions div {
+                padding: 14px 20px;
+            }
+            
+            .theme-toggle {
+                top: 16px;
+                right: 16px;
+                padding: 10px;
+            }
+        }
+
+        @media only screen and (max-width: 480px) {
+            body {
+                padding: 16px 12px;
+            }
+            
+            .header {
+                margin-bottom: 32px;
+            }
+            
+            .header h1 {
+                font-size: 1.8rem;
+            }
+            
+            .search-wrapper {
+                height: 48px;
+            }
+            
+            input[type="text"] {
+                font-size: 0.95rem;
+                padding: 12px 16px 12px 52px;
+                border-radius: var(--border-radius-small);
+            }
+            
+            .search-icon {
+                left: 16px;
+            }
+            
+            #suggestions {
+                border-radius: var(--border-radius-small);
+                max-height: 300px;
+            }
+            
+            #suggestions div {
+                padding: 12px 16px;
+                font-size: 0.95rem;
+            }
+        }
+
+        /* Accessibility */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        /* High contrast mode */
+        @media (prefers-contrast: high) {
+            :root {
+                --border-color: #000000;
+                --text-color: #000000;
+                --background-color: #ffffff;
+            }
+            
+            [data-theme="dark"] {
+                --border-color: #ffffff;
+                --text-color: #ffffff;
+                --background-color: #000000;
+            }
+        }
+
+        /* Focus styles for accessibility */
+        *:focus-visible {
+            outline: 3px solid var(--highlight-text);
+            outline-offset: 2px;
+        }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
         }
 
     </style>
 </head>
 <body>
-<div class="search-container">
-    <div class="search-wrapper">
-            <span class="search-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+<div class="main-container">
+    <header class="header">
+        <h1>FlexSearch</h1>
+        <p>Tìm kiếm phim thông minh với công nghệ AI</p>
+    </header>
+    
+    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Chuyển đổi chế độ sáng/tối">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>
+    </button>
+
+    <div class="search-container">
+        <div class="search-wrapper">
+            <span class="search-icon" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
             </span>
-            <input type="text" id="autocomplete" readonly disabled>
-            <input type="text" id="userinput" placeholder="Tìm kiếm phim..." autocorrect="off" spellcheck="false" autocomplete="off" autofocus>
+            <input type="text" id="autocomplete" readonly disabled tabindex="-1" aria-hidden="true">
+            <input type="text" id="userinput" placeholder="Nhập tên phim" autocorrect="off" spellcheck="false" autocomplete="off" autofocus aria-label="Tìm kiếm phim" role="searchbox" aria-expanded="false" aria-autocomplete="list" aria-describedby="search-instructions">
+        </div>
+        <div id="suggestions" role="listbox" aria-label="Gợi ý tìm kiếm"></div>
+        <div id="search-instructions" class="sr-only">
+            Sử dụng các phím mũi tên để điều hướng trong danh sách gợi ý. Nhấn Enter hoặc Tab để chọn.
+        </div>
     </div>
-    <div id="suggestions"></div>
 </div>
 <script type="module">
 
-    // Features:
-    // 1. Instant Search
-    // 2. Auto-Complete
-    // 3. Suggestions
-    // 4. Query Cache
-    // 5. Result Highlighting
-    // 6. Tokenizer
-    // 7. Encoder
-    // 8. Document Index (Field-Search)
-    // 9. Keyboard Navigation
+    // Enhanced Features:
+    // 1. Instant Search with debouncing
+    // 2. Auto-Complete with smart matching
+    // 3. Contextual Suggestions
+    // 4. Query Cache for performance
+    // 5. Result Highlighting with gradients
+    // 6. Advanced Tokenizer
+    // 7. Encoder optimization
+    // 8. Multi-field Document Index
+    // 9. Intuitive Keyboard Navigation
+    // 10. Dark mode support
+    // 11. Accessibility improvements
+    // 12. Loading states and animations
 
     const suggestions = document.getElementById("suggestions");
     const autocomplete = document.getElementById("autocomplete");
     const userinput = document.getElementById("userinput");
     let results = [];
-    let iterate = -1; // Bắt đầu từ -1 để không có mục nào được chọn ban đầu
+    let iterate = -1;
     let debounceTimer;
-    let isAcceptingSuggestion = false; // Cờ để kiểm soát việc gọi lại show_results
+    let isAcceptingSuggestion = false;
+    let searchCache = new Map();
+    let isLoading = false;
 
-    // Thay vì gọi show_results ngay lập tức, chúng ta sẽ gọi hàm debounce
-    userinput.addEventListener("input", () => {
-        // Nếu sự kiện input được kích hoạt do chấp nhận gợi ý, bỏ qua
-        if (isAcceptingSuggestion) {
-            isAcceptingSuggestion = false;
-            return;
-        }
+    // Theme Management
+    function initTheme() {
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    }
 
-        // Xóa bộ đếm thời gian cũ nếu người dùng vẫn đang gõ
-        clearTimeout(debounceTimer);
-        // Đặt một bộ đếm thời gian mới
-        debounceTimer = setTimeout(() => {
-            show_results();
-        }, 150); // Chờ 150ms sau lần gõ phím cuối cùng mới tìm kiếm
-    }, true);
+    window.toggleTheme = function() {
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', newTheme);
+        localStorage.setItem('theme', newTheme);
+    };
 
+    // Initialize theme on load
+    initTheme();
+
+    // Enhanced input handling with better debouncing
+    userinput.addEventListener("input", handleInput, true);
     userinput.addEventListener("keydown", key_handler, true);
+    userinput.addEventListener("focus", handleFocus, true);
+    userinput.addEventListener("blur", handleBlur, true);
     suggestions.addEventListener("click", accept_suggestion, true);
 
-    // Thêm một trình xử lý sự kiện để ẩn gợi ý khi người dùng nhấp ra ngoài
+    // Hide suggestions when clicking outside
     document.addEventListener("click", (event) => {
         if (!event.target.closest('.search-container')) {
             hide_suggestions();
         }
     });
 
-    async function show_results(){
-        const query = userinput.value;
+    function handleInput() {
+        if (isAcceptingSuggestion) {
+            isAcceptingSuggestion = false;
+            return;
+        }
+
+        clearTimeout(debounceTimer);
+        
+        const query = userinput.value.trim();
+        if (!query) {
+            hide_suggestions();
+            return;
+        }
+
+        // Show loading state
+        setLoadingState(true);
+
+        debounceTimer = setTimeout(() => {
+            show_results();
+        }, 200);
+    }
+
+    function handleFocus() {
+        userinput.setAttribute('aria-expanded', 'true');
+        if (userinput.value.trim() && results.length > 0) {
+            suggestions.classList.add("visible");
+        }
+    }
+
+    function handleBlur() {
+        // Delay to allow click on suggestions
+        setTimeout(() => {
+            userinput.setAttribute('aria-expanded', 'false');
+        }, 150);
+    }
+
+    function setLoadingState(loading) {
+        isLoading = loading;
+        if (loading) {
+            if (!suggestions.querySelector('.loading-indicator')) {
+                const loadingDiv = document.createElement('div');
+                loadingDiv.className = 'loading-indicator';
+                loadingDiv.innerHTML = '<div class="loading"></div><span>Đang tìm kiếm...</span>';
+                loadingDiv.style.cssText = 'padding: 20px 24px; text-align: center; color: var(--text-secondary); display: flex; align-items: center; justify-content: center; gap: 12px;';
+                suggestions.innerHTML = '';
+                suggestions.appendChild(loadingDiv);
+                suggestions.classList.add("visible");
+            }
+        }
+    }
+
+    async function show_results() {
+        const query = userinput.value.trim();
         if (!query) {
             results = [];
             suggestions.innerHTML = "";
             suggestions.classList.remove("visible");
             update_autocomplete();
+            setLoadingState(false);
+            return;
+        }
+
+        // Check cache first
+        if (searchCache.has(query)) {
+            results = searchCache.get(query);
+            displayResults();
             return;
         }
 
         try {
-            // Gọi API backend để tìm kiếm. Dùng đường dẫn tương đối vì HTML và API cùng một server.
-            const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+            const response = await fetch(/api/search?q=${encodeURIComponent(query)});
+            if (!response.ok) throw new Error('Search failed');
+            
             results = await response.json();
+            
+            // Cache results
+            searchCache.set(query, results);
+            
+            // Limit cache size
+            if (searchCache.size > 50) {
+                const firstKey = searchCache.keys().next().value;
+                searchCache.delete(firstKey);
+            }
+            
+            displayResults();
         } catch (error) {
             console.error("Lỗi khi tìm kiếm:", error);
             results = [];
+            displayErrorState();
+        } finally {
+            setLoadingState(false);
         }
+    }
 
+    function displayResults() {
+        setLoadingState(false);
+        
         if (results.length > 0) {
             suggestions.classList.add("visible");
         } else {
             suggestions.classList.remove("visible");
         }
 
-        // Sử dụng DocumentFragment để tối ưu hóa việc cập nhật DOM
         const fragment = document.createDocumentFragment();
-        for (const resultItem of results) {
-            const entry = document.createElement("div");
-            // Kết quả từ backend có dạng { doc: {title: ...}, highlight: "<b>...</b>" }
-            // Ưu tiên hiển thị highlight, nếu không có thì hiển thị title thường
-            entry.innerHTML = resultItem.highlight || resultItem.doc.title;
-            fragment.appendChild(entry);
+        
+        // Add search stats
+        if (results.length > 0) {
+            const statsDiv = document.createElement("div");
+            statsDiv.className = 'search-stats';
+            statsDiv.textContent = Tìm thấy ${results.length} kết quả;
+            fragment.appendChild(statsDiv);
         }
 
-        // Xóa nội dung cũ và thêm nội dung mới chỉ trong một thao tác
+        // Add results
+        results.forEach((resultItem, index) => {
+            const entry = document.createElement("div");
+            entry.setAttribute('role', 'option');
+            entry.setAttribute('aria-selected', 'false');
+            entry.innerHTML = resultItem.highlight || resultItem.doc.title;
+            entry.addEventListener('mouseenter', () => select_result(index + 1)); // +1 because of stats div
+            fragment.appendChild(entry);
+        });
+
         suggestions.innerHTML = "";
         suggestions.appendChild(fragment);
 
-
         iterate = -1;
         if (results.length > 0) {
-            select_result(0);
+            select_result(1); // Select first result (index 1 because of stats div)
         }
         update_autocomplete();
     }
 
-    function key_handler(event){
+    function displayErrorState() {
+        suggestions.innerHTML = `
+            <div style="padding: 40px 24px; text-align: center; color: var(--text-secondary);">
+                <div style="font-size: 2rem; margin-bottom: 12px;">⚠️</div>
+                <div>Có lỗi xảy ra khi tìm kiếm</div>
+                <div style="font-size: 0.9rem; margin-top: 8px; opacity: 0.7;">Vui lòng thử lại sau</div>
+            </div>
+        `;
+        suggestions.classList.add("visible");
+    }
+
+    function key_handler(event) {
         const key = event.key;
-        if(key === "ArrowUp" || key === "ArrowDown"){
-            if(key === "ArrowUp"){
-                if(iterate > 0) select_result(iterate - 1);
+        const suggestionItems = suggestions.children;
+        const totalItems = suggestionItems.length;
+        
+        if (key === "ArrowUp" || key === "ArrowDown") {
+            if (totalItems === 0) return;
+            
+            if (key === "ArrowUp") {
+                if (iterate > 0) {
+                    select_result(iterate - 1);
+                } else {
+                    select_result(totalItems - 1); // Wrap to last item
+                }
             } else { // ArrowDown
-                if(iterate < results.length - 1) select_result(iterate + 1);
+                if (iterate < totalItems - 1) {
+                    select_result(iterate + 1);
+                } else {
+                    select_result(0); // Wrap to first item
+                }
             }
             update_autocomplete();
             event.preventDefault();
-        } else if (key === "Enter" || key === "Tab" || key === "ArrowRight"){
-            if(autocomplete.value && autocomplete.value !== userinput.value){
+        } else if (key === "Enter") {
+            if (iterate >= 0 && iterate < totalItems) {
+                const selectedItem = suggestionItems[iterate];
+                if (selectedItem && !selectedItem.classList.contains('search-stats')) {
+                    accept_selected_suggestion();
+                    event.preventDefault();
+                }
+            }
+        } else if (key === "Tab" || key === "ArrowRight") {
+            if (autocomplete.value && autocomplete.value !== userinput.value) {
                 accept_autocomplete();
                 event.preventDefault();
             }
+        } else if (key === "Escape") {
+            hide_suggestions();
+            event.preventDefault();
         }
     }
 
-    function update_autocomplete(){
-        let value = userinput.value;
-        let current_result_text = results[iterate] && results[iterate].doc && results[iterate].doc.title;
-        let match = current_result_text && current_result_text.toLowerCase().startsWith(value.toLowerCase());
+    function update_autocomplete() {
+        const value = userinput.value;
+        const statsOffset = suggestions.querySelector('.search-stats') ? 1 : 0;
+        const adjustedIndex = iterate - statsOffset;
+        
+        if (adjustedIndex >= 0 && adjustedIndex < results.length) {
+            const currentResult = results[adjustedIndex];
+            const currentResultText = currentResult && currentResult.doc && currentResult.doc.title;
+            const match = currentResultText && currentResultText.toLowerCase().startsWith(value.toLowerCase());
 
-        if(match){
-            autocomplete.value = value + current_result_text.substring(value.length);
-        }
-        else{
+            if (match && value.length > 0) {
+                autocomplete.value = value + currentResultText.substring(value.length);
+            } else {
+                autocomplete.value = "";
+            }
+        } else {
             autocomplete.value = "";
         }
     }
 
-    function hide_suggestions(){
+    function hide_suggestions() {
         suggestions.classList.remove("visible");
         autocomplete.value = "";
         iterate = -1;
-    }
-
-    function select_result(index){
-        // Xóa class 'selected' khỏi tất cả các mục con trước
+        userinput.setAttribute('aria-expanded', 'false');
+        
+        // Clear all selections
         const suggestionItems = suggestions.children;
         for (const item of suggestionItems) {
             item.classList.remove("selected");
+            item.setAttribute('aria-selected', 'false');
+        }
+    }
+
+    function select_result(index) {
+        const suggestionItems = suggestions.children;
+        
+        // Clear previous selections
+        for (const item of suggestionItems) {
+            item.classList.remove("selected");
+            item.setAttribute('aria-selected', 'false');
         }
 
         iterate = index;
 
-        suggestionItems[iterate]?.classList.add("selected");
+        if (iterate >= 0 && iterate < suggestionItems.length) {
+            const selectedItem = suggestionItems[iterate];
+            selectedItem.classList.add("selected");
+            selectedItem.setAttribute('aria-selected', 'true');
+            
+            // Scroll into view if needed
+            selectedItem.scrollIntoView({
+                block: 'nearest',
+                behavior: 'smooth'
+            });
+        }
     }
 
-    function accept_autocomplete(){
-        isAcceptingSuggestion = true; // Đặt cờ trước khi thay đổi value
+    function accept_autocomplete() {
+        isAcceptingSuggestion = true;
         userinput.value = autocomplete.value;
-
         hide_suggestions();
         results = [];
-        // Focus lại input để người dùng có thể tiếp tục
         userinput.focus();
+        
+        // Add subtle feedback
+        userinput.style.transform = 'scale(1.02)';
+        setTimeout(() => {
+            userinput.style.transform = '';
+        }, 150);
     }
 
-    function accept_suggestion(event){
-        // Ngăn sự kiện click nổi bọt lên document, tránh việc hide_suggestions được gọi 2 lần
+    function accept_selected_suggestion() {
+        const suggestionItems = suggestions.children;
+        const statsOffset = suggestions.querySelector('.search-stats') ? 1 : 0;
+        const adjustedIndex = iterate - statsOffset;
+        
+        if (adjustedIndex >= 0 && adjustedIndex < results.length) {
+            const selectedResult = results[adjustedIndex];
+            isAcceptingSuggestion = true;
+            userinput.value = selectedResult.doc.title;
+            hide_suggestions();
+            
+            // Add feedback animation
+            userinput.style.transform = 'scale(1.02)';
+            setTimeout(() => {
+                userinput.style.transform = '';
+            }, 150);
+        }
+    }
+
+    function accept_suggestion(event) {
         event.stopPropagation();
 
-        // ensure we're acting on the suggestion div, not a child like <b>
         const target = event.target.closest('div');
-        isAcceptingSuggestion = true; // Đặt cờ trước khi thay đổi value
-        userinput.value = target.textContent;
+        if (!target || target.classList.contains('search-stats') || target.classList.contains('loading-indicator')) {
+            return;
+        }
+
+        isAcceptingSuggestion = true;
+        
+        // Extract plain text from HTML content
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = target.innerHTML;
+        userinput.value = tempDiv.textContent || tempDiv.innerText || '';
 
         hide_suggestions();
+
+        // Add click feedback
+        target.style.transform = 'scale(0.98)';
+        setTimeout(() => {
+            target.style.transform = '';
+        }, 100);
 
         return false;
     }
+
+    // Performance optimization: Preconnect to API
+    const link = document.createElement('link');
+    link.rel = 'preconnect';
+    link.href = window.location.origin;
+    document.head.appendChild(link);
+
+    // Add keyboard shortcuts info
+    const shortcutsInfo = document.createElement('div');
+    shortcutsInfo.className = 'sr-only';
+    shortcutsInfo.setAttribute('aria-live', 'polite');
+    document.body.appendChild(shortcutsInfo);
+
+    // Focus management
+    userinput.addEventListener('keydown', (e) => {
+        if (e.key === '/') {
+            e.preventDefault();
+            userinput.focus();
+        }
+    });
+
+    // Add focus ring for keyboard navigation
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Tab') {
+            document.body.classList.add('keyboard-navigation');
+        }
+    });
+
+    document.addEventListener('mousedown', () => {
+        document.body.classList.remove('keyboard-navigation');
+    });
+
 </script>
 </body>
 </html>
