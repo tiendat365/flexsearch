@@ -88,14 +88,8 @@ async function populateIndex() {
         index = new FlexSearch.Document({
             document: {
                 id: "_id",
-                // Tăng trọng số cho tiêu đề
-                index: [
-                    {
-                        field: "title",
-                        boost: 2 // Ưu tiên kết quả ở tiêu đề gấp đôi
-                    },
-                    "content" // Giữ nguyên trọng số cho nội dung
-                ]
+                index: ["title", "content"],
+                store: ["title", "content"]
             },
             filter: vietnameseStopwords,
             tokenize: "full"
