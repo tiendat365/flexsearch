@@ -6,9 +6,7 @@
 
 ## ✨ Tính năng
 
-- 🚀 **Tìm kiếm siêu nhanh** với FlexSearch index
-- 🇻🇳 **Hỗ trợ tiếng Việt** với bộ lọc từ dừng
-- 🎯 **Auto-complete** và gợi ý thông minh
+
 - 💡 **Highlight** kết quả tìm kiếm
 - 🔧 **Fuzzy search** cho kết quả gần đúng
 - 📄 **CRUD API** đầy đủ cho quản lý tài liệu
