@@ -35,51 +35,7 @@ let index;
 
 
 
-// === HÀM THÊM DỮ LIỆU MẪU (SEEDING) ===
-async function seedDatabase() {
-    try {
-        console.log('🌱 Bắt đầu quá trình seeding/cập nhật dữ liệu...');
-        // Sử dụng import() động để tải ES Module từ CommonJS module.
-        const dataModule = await import('../public/data.js');
-        const movieTitles = dataModule.default;
- 
-        // Thêm một vài phim mới để minh họa
-        movieTitles.push(
-            "Mắt Biếc",
-            "Bố Già",
-            "Hai Phượng",
-            "Em Chưa 18",
-            "Cua Lại Vợ Bầu",
-            "Tiệc Trăng Máu",
-            "Gái Già Lắm Chiêu",
-            "Tháng Năm Rực Rỡ",
-            "Tôi Thấy Hoa Vàng Trên Cỏ Xanh",
-            "Lật Mặt: 48H",
-            "Chìa Khóa Trăm Tỷ",
-            "Nhà Bà Nữ",
-            "Mai",
-            "Song Lang",
-            "Chị Chị Em Em",
-            "Người Bất Tử",
-            "Trạng Tí Phiêu Lưu Ký"
-        );
- 
-        const operations = movieTitles.map(title => ({
-            updateOne: {
-                filter: { title: title }, // Tìm document theo tiêu đề
-                update: { $set: { title: title, content: title } }, // Dữ liệu để cập nhật/thêm mới
-                upsert: true // Nếu không tìm thấy, hãy tạo một document mới
-            }
-        }));
- 
-        if (operations.length > 0) {
-            const result = await Document.bulkWrite(operations);
-            console.log(`✅ Seeding hoàn tất. Đã thêm mới: ${result.upsertedCount}, đã tồn tại: ${result.matchedCount}.`);
-        }
-    } catch (error) {
-        console.error('❌ Lỗi trong quá trình seeding dữ liệu:', error);
-    }
-}
+
 // === HÀM ĐỒNG BỘ DỮ LIỆU TỪ DB VÀO INDEX ===
 async function populateIndex() {
     try {
@@ -123,7 +79,8 @@ app.get('/api/search', (req, res) => {
       highlight: "<b>$1</b>",
       // Mặc định, kết hợp các điều kiện bằng AND
       // (kết quả phải khớp tất cả các trường được cung cấp)
-      bool: "and" 
+      bool: "or" ,
+      limit: 10000
     };
 
     // Tách các tham số truy vấn thành các điều kiện tìm kiếm và các tùy chọn
@@ -152,12 +109,17 @@ app.get('/api/search', (req, res) => {
 
     const searchResults = index.search(searchQueries, searchOptions);
 
-    const finalResults = (searchResults && searchResults.length > 0 && searchResults[0].result)
-      ? searchResults[0].result.map(item => ({
-            doc: item.doc,
-            highlight: item.highlight
-        })) : [];
-        res.json(finalResults);
+    // Gộp tất cả kết quả từ các field
+    const mergedResults = searchResults.flatMap(r => r.result);
+
+    // Loại bỏ trùng lặp theo _id
+    const uniqueResults = Array.from(new Map(mergedResults.map(item => [item.doc._id, item])).values());
+
+    // Trả về tất cả kết quả
+    res.json(uniqueResults.map(item => ({
+        doc: item.doc,
+        highlight: item.highlight
+    })));
     } catch (error) {
         console.error("Lỗi API Search:", error);
         res.status(500).json({ error: "Lỗi máy chủ khi tìm kiếm" });
@@ -281,15 +243,31 @@ async function startServer() {
 
         // 2. Thêm dữ liệu mẫu nếu cần
         // Tạm thời vô hiệu hóa việc tự động thêm dữ liệu khi khởi động
-        await seedDatabase();
+        // await seedDatabase();
 
         // 3. Đồng bộ dữ liệu vào FlexSearch index và CHỜ cho đến khi hoàn tất
         await populateIndex();
 
         // 4. CHỈ SAU KHI MỌI THỨ SẴN SÀNG, mới khởi động Express server
-        app.listen(PORT, async () => {
-            console.log(`🚀 Server đang chạy tại http://localhost:${PORT}`);
-        });
+        const http = require('http');
+        const server = http.createServer(app);
+        const tryListen = (port) => {
+            server.listen(port)
+            .on('listening', () => {
+                console.log(`🚀 Server đang chạy tại http://localhost:${port}`);
+            })
+            .on('error', (err) => {
+                if (err.code === 'EADDRINUSE') {
+                    console.warn(`⚠️ Cổng ${port} đang bận. Thử cổng ${port + 1}...`);
+                    tryListen(port + 1);
+                } else {
+                    console.error('❌ Lỗi không mong muốn:', err);
+                    process.exit(1);
+                }
+            });
+        };
+const initialPort = parseInt(process.env.PORT, 10) || 5000;
+tryListen(initialPort);
     } catch (error) {
         console.error('❌ Không thể kết nối tới MongoDB. Server không thể khởi động.', error);
         process.exit(1); // Thoát ứng dụng nếu không kết nối được DB
