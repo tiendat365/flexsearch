@@ -2,8 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const fs = require('fs').promises;
 const mongoose = require('mongoose');
-require('dotenv').config(); // Tải các biến môi trường từ file .env
-
+require('dotenv').config(); 
+const FlexSearch = require('flexsearch');
 // === KHỞI TẠO ỨNG DỤNG EXPRESS ===
 const app = express();
 // Sử dụng PORT từ file .env hoặc mặc định là 5000
@@ -32,8 +32,7 @@ const vietnameseStopwords = [
 
 // Khai báo index ở đây nhưng sẽ khởi tạo trong hàm populateIndex
 let index;
-// Khai báo biến để giữ class Document của FlexSearch
-let FlexSearchDocument;
+
 
 
 // === HÀM THÊM DỮ LIỆU MẪU (SEEDING) ===
@@ -86,7 +85,7 @@ async function populateIndex() {
     try {
         console.log("🔄 Đang đồng bộ dữ liệu từ MongoDB vào Index...");
         // Khởi tạo một index mới, trống mỗi khi hàm này được gọi
-        index = new FlexSearchDocument({
+        index = new FlexSearch.Document({
             document: {
                 id: "_id",
                 // Tăng trọng số cho tiêu đề
@@ -275,10 +274,7 @@ app.get('/api/health', (req, res) => {
 // === KHỞI ĐỘNG SERVER ===
 async function startServer() {
     try {
-        // 0. Tải FlexSearch Document class bằng import() động
-        const FlexSearchModule = await import('flexsearch');
-        FlexSearchDocument = FlexSearchModule.default.Document;
-
+       
         // 1. Kết nối tới MongoDB và CHỜ cho đến khi hoàn tất
         const dbURI = process.env.MONGODB_URI || "mongodb://localhost:27017/flexsearchDB";
         await mongoose.connect(dbURI);
@@ -291,7 +287,7 @@ async function startServer() {
 
         // 2. Thêm dữ liệu mẫu nếu cần
         // Tạm thời vô hiệu hóa việc tự động thêm dữ liệu khi khởi động
-        // await seedDatabase();
+        await seedDatabase();
 
         // 3. Đồng bộ dữ liệu vào FlexSearch index và CHỜ cho đến khi hoàn tất
         await populateIndex();
