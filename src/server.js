@@ -47,8 +47,8 @@ async function populateIndex() {
                 index: ["title", "content"],
                 store: ["title", "content"]
             },
-            filter: vietnameseStopwords,
-            tokenize: "full"
+            tokenize: "forward",
+            resolution: 9
         });
 
         const allDocs = await Document.find({});
@@ -73,53 +73,36 @@ async function populateIndex() {
 app.get('/api/search', (req, res) => {
   try {
     const queryParams = req.query;
-    const searchQueries = [];
-    const searchOptions = {
-      enrich: true,
-      highlight: "<b>$1</b>",
-      // Mặc định, kết hợp các điều kiện bằng AND
-      // (kết quả phải khớp tất cả các trường được cung cấp)
-      bool: "or" ,
-      limit: 10000
-    };
-
-    // Tách các tham số truy vấn thành các điều kiện tìm kiếm và các tùy chọn
-    for (const key in queryParams) {
-      if (Object.prototype.hasOwnProperty.call(queryParams, key)) {
-        const value = queryParams[key];
-        // Các tham số đặc biệt để điều khiển tìm kiếm
-        if (key === 'limit') {
-          searchOptions.limit = parseInt(value, 10) || 10;
-        } else if (key === 'fuzzy') {
-          searchOptions.fuzzy = parseInt(value, 10) || 0;
-        } else if (key === 'bool' && (value === 'and' || value === 'or')) {
-          searchOptions.bool = value;
-        } else if (key === 'q') { // Hỗ trợ tham số 'q' để tìm kiếm chung
-          searchQueries.push({ field: ['title', 'content'], query: value });
-        } else {
-          // Các tham số khác được coi là tìm kiếm theo trường cụ thể
-          searchQueries.push({ field: key, query: value });
-        }
-      }
+    const query = queryParams.q || queryParams.title || queryParams.content;
+    
+    if (!query) {
+      return res.status(400).json({ error: "Vui lòng cung cấp tham số 'q' để tìm kiếm." });
     }
 
-    if (searchQueries.length === 0) {
-      return res.status(400).json({ error: "Vui lòng cung cấp ít nhất một tham số tìm kiếm (ví dụ: q, title, content)." });
-    }
-
-    const searchResults = index.search(searchQueries, searchOptions);
-
-    // Gộp tất cả kết quả từ các field
-    const mergedResults = searchResults.flatMap(r => r.result);
-
-    // Loại bỏ trùng lặp theo _id
-    const uniqueResults = Array.from(new Map(mergedResults.map(item => [item.doc._id, item])).values());
-
-    // Trả về tất cả kết quả
-    res.json(uniqueResults.map(item => ({
+    const limit = parseInt(queryParams.limit) || 10;
+    
+    console.log("Searching for:", query);
+    
+    // Tìm kiếm đơn giản hơn - chỉ tìm trong title
+    const searchResults = index.search(query, {
+      field: "title",
+      limit: limit,
+      enrich: true
+    });
+    
+    console.log("Search results count:", searchResults.length);
+    
+    // FlexSearch với enrich:true trả về [{field, result: [{id, doc}]}]
+    let results = [];
+    if (searchResults.length > 0 && searchResults[0].result) {
+      results = searchResults[0].result.map(item => ({
         doc: item.doc,
-        highlight: item.highlight
-    })));
+        highlight: item.doc.title
+      }));
+    }
+    
+    console.log("Returning", results.length, "results");
+    res.json(results);
     } catch (error) {
         console.error("Lỗi API Search:", error);
         res.status(500).json({ error: "Lỗi máy chủ khi tìm kiếm" });
