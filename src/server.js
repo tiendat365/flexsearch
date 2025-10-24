@@ -231,6 +231,241 @@ app.get('/api/health', (req, res) => {
         });
     }
 });
+
+// =====================================
+// === DISTRIBUTED SYSTEM ENDPOINTS ===
+// =====================================
+
+// Dashboard metrics endpoint
+app.get('/api/dashboard/metrics', (req, res) => {
+    try {
+        const metrics = {
+            timestamp: new Date().toISOString(),
+            loadBalancer: {
+                activeNodes: 3,
+                totalRequests: Math.floor(Math.random() * 10000) + 1000,
+                strategy: 'vòng-quay',
+                nodes: [
+                    { name: 'Máy-1', status: 'hoạt-động', load: Math.floor(Math.random() * 40) + 30 },
+                    { name: 'Máy-2', status: 'hoạt-động', load: Math.floor(Math.random() * 40) + 20 },
+                    { name: 'Máy-3', status: 'hoạt-động', load: Math.floor(Math.random() * 40) + 15 }
+                ]
+            },
+            cache: {
+                hitRatio: Math.floor(Math.random() * 20) + 75,
+                totalKeys: Math.floor(Math.random() * 5000) + 10000,
+                memoryUsage: (Math.random() * 2 + 1.5).toFixed(1),
+                performance: Math.floor(Math.random() * 30) + 70
+            },
+            search: {
+                searchesPerMin: Math.floor(Math.random() * 40) + 20,
+                avgResponseTime: Math.floor(Math.random() * 100) + 80,
+                successRate: (Math.random() * 5 + 95).toFixed(1),
+                popularQueries: [
+                    { query: 'avatar', count: Math.floor(Math.random() * 50) + 100 },
+                    { query: 'inception', count: Math.floor(Math.random() * 50) + 70 },
+                    { query: 'marvel', count: Math.floor(Math.random() * 30) + 50 },
+                    { query: 'chiến tranh sao', count: Math.floor(Math.random() * 40) + 45 },
+                    { query: 'ma trận', count: Math.floor(Math.random() * 35) + 40 }
+                ]
+            },
+            system: {
+                cpuUsage: Math.floor(Math.random() * 40) + 20,
+                ramUsage: Math.floor(Math.random() * 30) + 40,
+                diskIO: Math.floor(Math.random() * 30) + 10,
+                uptime: process.uptime()
+            }
+        };
+
+        res.json(metrics);
+    } catch (error) {
+        console.error('Error fetching dashboard metrics:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+    try {
+        const health = {
+            status: 'khỏe-mạnh',
+            timestamp: new Date().toISOString(),
+            services: {
+                database: mongoose.connection.readyState === 1 ? 'đã-kết-nối' : 'mất-kết-nối',
+                search: index ? 'sẵn-sàng' : 'chưa-sẵn-sàng',
+                loadBalancer: 'hoạt-động',
+                cache: 'đã-kết-nối'
+            },
+            uptime: process.uptime(),
+            memory: process.memoryUsage(),
+            version: process.version
+        };
+
+        res.json(health);
+    } catch (error) {
+        console.error('Error in health check:', error);
+        res.status(500).json({ 
+            status: 'không-khỏe-mạnh',
+            error: error.message,
+            timestamp: new Date().toISOString()
+        });
+    }
+});
+
+// System logs endpoint
+app.get('/api/logs', (req, res) => {
+    try {
+        const limit = parseInt(req.query.limit) || 50;
+        const type = req.query.type || 'all';
+        
+        // Simulate log entries
+        const logs = [];
+        const types = ['info', 'warning', 'error', 'success'];
+        const categories = ['LOAD_BALANCER', 'CACHE', 'SEARCH', 'HEALTH_CHECK', 'SYSTEM'];
+        const messages = [
+            'Yêu cầu được chuyển thành công',
+            'Tỷ lệ cache trúng tối ưu',
+            'Tìm kiếm hoàn thành thành công',
+            'Tất cả máy chủ đang phản hồi bình thường',
+            'Kích hoạt tự động mở rộng',
+            'Phát hiện sử dụng bộ nhớ cao',
+            'Hoàn thành làm mới cache',
+            'Kiểm tra chuyển đổi dự phòng thành công'
+        ];
+
+        for (let i = 0; i < Math.min(limit, 20); i++) {
+            const timestamp = new Date(Date.now() - i * 60000).toISOString();
+            const logType = types[Math.floor(Math.random() * types.length)];
+            const category = categories[Math.floor(Math.random() * categories.length)];
+            const message = messages[Math.floor(Math.random() * messages.length)];
+
+            if (type === 'all' || type === logType) {
+                logs.push({
+                    timestamp,
+                    type: logType,
+                    category,
+                    message,
+                    id: `log_${Date.now()}_${i}`
+                });
+            }
+        }
+
+        res.json({ logs, total: logs.length });
+    } catch (error) {
+        console.error('Error fetching logs:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Node status endpoint
+app.get('/api/nodes', (req, res) => {
+    try {
+        const nodes = [
+            {
+                id: 'node-1',
+                name: 'Node-1 (Primary)',
+                status: 'active',
+                load: Math.floor(Math.random() * 40) + 30,
+                memory: Math.floor(Math.random() * 30) + 50,
+                cpu: Math.floor(Math.random() * 40) + 20,
+                uptime: Math.floor(Math.random() * 86400) + 86400,
+                requests: Math.floor(Math.random() * 1000) + 500,
+                lastHeartbeat: new Date().toISOString()
+            },
+            {
+                id: 'node-2',
+                name: 'Node-2',
+                status: 'active',
+                load: Math.floor(Math.random() * 40) + 20,
+                memory: Math.floor(Math.random() * 30) + 40,
+                cpu: Math.floor(Math.random() * 40) + 15,
+                uptime: Math.floor(Math.random() * 86400) + 86400,
+                requests: Math.floor(Math.random() * 800) + 400,
+                lastHeartbeat: new Date().toISOString()
+            },
+            {
+                id: 'node-3',
+                name: 'Node-3',
+                status: 'active',
+                load: Math.floor(Math.random() * 40) + 15,
+                memory: Math.floor(Math.random() * 30) + 35,
+                cpu: Math.floor(Math.random() * 40) + 10,
+                uptime: Math.floor(Math.random() * 86400) + 86400,
+                requests: Math.floor(Math.random() * 600) + 300,
+                lastHeartbeat: new Date().toISOString()
+            }
+        ];
+
+        res.json({ nodes, total: nodes.length });
+    } catch (error) {
+        console.error('Error fetching node status:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Cache statistics endpoint
+app.get('/api/cache/stats', (req, res) => {
+    try {
+        const stats = {
+            timestamp: new Date().toISOString(),
+            hitRatio: Math.floor(Math.random() * 20) + 75,
+            missRatio: Math.floor(Math.random() * 25) + 5,
+            totalKeys: Math.floor(Math.random() * 5000) + 10000,
+            usedMemory: (Math.random() * 2 + 1.5).toFixed(1),
+            maxMemory: '4.0',
+            connections: Math.floor(Math.random() * 20) + 10,
+            opsPerSecond: Math.floor(Math.random() * 1000) + 500,
+            averageLatency: Math.floor(Math.random() * 10) + 2,
+            keyspaces: [
+                { name: 'search_cache', keys: Math.floor(Math.random() * 3000) + 5000 },
+                { name: 'session_cache', keys: Math.floor(Math.random() * 1000) + 2000 },
+                { name: 'analytics_cache', keys: Math.floor(Math.random() * 2000) + 3000 }
+            ]
+        };
+
+        res.json(stats);
+    } catch (error) {
+        console.error('Error fetching cache stats:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Performance metrics endpoint
+app.get('/api/performance', (req, res) => {
+    try {
+        const interval = req.query.interval || '1h';
+        const points = [];
+        const pointCount = interval === '1h' ? 60 : interval === '24h' ? 24 : 12;
+        
+        for (let i = pointCount; i >= 0; i--) {
+            const timestamp = new Date(Date.now() - i * 60000);
+            points.push({
+                timestamp: timestamp.toISOString(),
+                cpu: Math.floor(Math.random() * 40) + 20,
+                memory: Math.floor(Math.random() * 30) + 40,
+                network: Math.floor(Math.random() * 100) + 50,
+                disk: Math.floor(Math.random() * 50) + 10,
+                requests: Math.floor(Math.random() * 100) + 50,
+                responseTime: Math.floor(Math.random() * 50) + 80
+            });
+        }
+
+        res.json({
+            interval,
+            points,
+            summary: {
+                avgCpu: points.reduce((sum, p) => sum + p.cpu, 0) / points.length,
+                avgMemory: points.reduce((sum, p) => sum + p.memory, 0) / points.length,
+                avgResponseTime: points.reduce((sum, p) => sum + p.responseTime, 0) / points.length,
+                totalRequests: points.reduce((sum, p) => sum + p.requests, 0)
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching performance metrics:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 // === KHỞI ĐỘNG SERVER ===
 async function startServer() {
     try {
