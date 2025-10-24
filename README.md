@@ -527,10 +527,12 @@ lsof -ti:5000 | xargs kill -9
 - *Performance metrics*: Hiển thị hiệu suất hệ thống
 - *Export capabilities*: Xuất dữ liệu để phân tích
 
-### 💡 Highlight Search Results
-- *Smart highlighting*: Tô sáng từ khóa trong kết quả tìm kiếm
-- *Regex-based*: Sử dụng regex để highlight chính xác
-- *Visual feedback*: Giúp user dễ dàng nhận diện kết quả
+### 📚 **Lịch Sử Tìm Kiếm**
+- 💾 **Lưu trữ thông minh** - Auto-save mọi tìm kiếm
+- 📊 **Thống kê chi tiết** - Tổng số, từ khóa duy nhất, hôm nay
+- 🔍 **Tìm trong lịch sử** - Search & filter mạnh mẽ
+- 📥 **Xuất dữ liệu** - Export CSV cho phân tích
+- 🗑️ **Quản lý linh hoạt** - Xóa từng mục hoặc tất cả
 
 ---
 
