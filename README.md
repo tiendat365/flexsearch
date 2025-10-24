@@ -13,7 +13,6 @@ Hệ thống tìm kiếm toàn văn **mạnh mẽ và phân tán** được xây
 
 ### 🔍 **Tìm Kiếm Thông Minh**
 - 🚀 **Tìm kiếm siêu nhanh** với FlexSearch index
-- 🇻🇳 **Hỗ trợ tiếng Việt** hoàn chỉnh với bộ lọc từ dừng
 - 🎯 **Auto-complete** và gợi ý thông minh real-time
 - 💡 **Highlight kết quả** với gradient đẹp mắt
 - 🔧 **Fuzzy search** cho kết quả gần đúng
