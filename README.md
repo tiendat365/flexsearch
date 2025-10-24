@@ -564,9 +564,8 @@ MIT License - xem file [LICENSE](LICENSE) để biết thêm chi tiết
 
 ## 👨‍💻 Tác giả
 
-*tiendat365*
-
 - GitHub: [@tiendat365](https://github.com/tiendat365)
+          [@QAnhne-1](https://github.com/QAnhne-1)
 - Repository: [flexsearch](https://github.com/tiendat365/flexsearch)
 
 ---
