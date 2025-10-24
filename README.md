@@ -169,8 +169,7 @@ flexsearch/
 │   └── 🖥️ server.js                 # Backend chính, API endpoints & logic
 ├── 📁 public/
 │   ├── 🌐 index.html                # Frontend - Trang chính với 3 tabs
-│   ├── 🎨 package.json              # Config cho public folder  
-│   └── 📊 favicon.ico               # Website icon
+│   ├── 🎨 package.json              # Config cho public folder    
 ├── 📁 data/
 │   ├── 📄 documents.json            # Dữ liệu mẫu (26,791 documents)
 │   └── 🎬 movies.json               # Dữ liệu mẫu (phim ảnh)
