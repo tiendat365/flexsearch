@@ -445,7 +445,7 @@ Dự án này được phân phối dưới **MIT License**. Xem file `LICENSE` 
 
 ## 👥 Tác Giả
 
-- **👨‍💻 Nguyễn Tiến Đạt** - *Initial work* - [@tiendat365](https://github.com/tiendat365)
+- **👨‍💻 Trần Tiến Đạt** - *Initial work* - [@tiendat365](https://github.com/tiendat365)
 
 ### 🙏 **Acknowledgments**
 
@@ -460,7 +460,7 @@ Dự án này được phân phối dưới **MIT License**. Xem file `LICENSE` 
 
 - 🐛 **Issues:** [GitHub Issues](https://github.com/tiendat365/flexsearch/issues)
 - 💬 **Discussions:** [GitHub Discussions](https://github.com/tiendat365/flexsearch/discussions)
-- 📧 **Email:** tiendat365@example.com
+- 📧 **Email:** trantiendat030605@gmail.com
 - 🌐 **Website:** [Demo Live](https://flexsearch-demo.herokuapp.com)
 
 ---
