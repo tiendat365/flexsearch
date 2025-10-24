@@ -1,43 +1,74 @@
-# 🔍 FlexSearch Demo - Full-Text Search Application
+# 🔍 FlexSearch - Hệ Thống Tìm Kiếm Thông Minh & Phân Tán
 
-Ứng dụng tìm kiếm toàn văn (Full-Text Search) mạnh mẽ được xây dựng với *FlexSearch*, *Node.js*, *Express* và *MongoDB*. Hỗ trợ tìm kiếm tiếng Việt với auto-complete, fuzzy search và highlight kết quả.
+[![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
+[![MongoDB](https://img.shields.io/badge/MongoDB-6.0+-green.svg)](https://www.mongodb.com/)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Vietnamese](https://img.shields.io/badge/Language-Vietnamese-red.svg)](README.md)
 
----
-
-## ✨ Tính năng
-
-- 🚀 *Tìm kiếm siêu nhanh* với FlexSearch index
-- 🇻🇳 *Hỗ trợ tiếng Việt* với bộ lọc từ dừng
-- 🎯 *Auto-complete* và gợi ý thông minh
-- 💡 *Highlight* kết quả tìm kiếm
-- 🔧 *Fuzzy search* cho kết quả gần đúng
-- 📄 *CRUD API* đầy đủ cho quản lý tài liệu
-- 📱 *Responsive UI* hiện đại
-- � *Dashboard báo cáo* với thống kê trực quan
-- �🐳 *Docker* support cho MongoDB
-- 🔄 *Auto-sync* index với database
-- ⚡ *Port fallback* tự động nếu port bận
+Hệ thống tìm kiếm toàn văn **mạnh mẽ và phân tán** được xây dựng với **FlexSearch**, **Node.js**, **Express** và **MongoDB**. Hỗ trợ đầy đủ tiếng Việt với giao diện hiện đại, dashboard phân tán và lịch sử tìm kiếm thông minh.
 
 ---
 
-## 📋 Yêu cầu hệ thống
+## ✨ Tính Năng Chính
 
-- *Node.js* >= 14.x
-- *npm* hoặc *yarn*
-- *Docker* và *Docker Compose* (khuyến nghị)
-- Hoặc *MongoDB* cài đặt trực tiếp trên máy
+### 🔍 **Tìm Kiếm Thông Minh**
+- 🚀 **Tìm kiếm siêu nhanh** với FlexSearch index
+- 🇻🇳 **Hỗ trợ tiếng Việt** hoàn chỉnh với bộ lọc từ dừng
+- 🎯 **Auto-complete** và gợi ý thông minh real-time
+- 💡 **Highlight kết quả** với gradient đẹp mắt
+- 🔧 **Fuzzy search** cho kết quả gần đúng
+- ⚡ **Cache thông minh** với performance tối ưu
+
+### � **Dashboard Phân Tán**
+- ⚖️ **Bộ Cân Bằng Tải** - Theo dõi 3+ nodes real-time
+- 🗄️ **Bộ Nhớ Cache Phân Tán** - Redis cluster simulation
+- 📈 **Phân Tích Tìm Kiếm** - Thống kê từ khóa phổ biến
+- ⚡ **Hiệu Suất Hệ Thống** - CPU, RAM, Disk I/O monitoring
+- 📝 **Nhật Ký Real-time** - System logs tự động cập nhật
+
+### 📚 **Lịch Sử Tìm Kiếm**
+- 💾 **Lưu trữ thông minh** - Auto-save mọi tìm kiếm
+- 📊 **Thống kê chi tiết** - Tổng số, từ khóa duy nhất, hôm nay
+- 🔍 **Tìm trong lịch sử** - Search & filter mạnh mẽ
+- 📥 **Xuất dữ liệu** - Export CSV cho phân tích
+- 🗑️ **Quản lý linh hoạt** - Xóa từng mục hoặc tất cả
+
+### 🎨 **Giao Diện Hiện Đại**
+- 📱 **Responsive Design** - Hoạt động mượt trên mọi thiết bị
+- 🌙 **Dark/Light Mode** - Chuyển đổi theme dễ dàng
+- 🎭 **Tab System** - Tìm Kiếm | Lịch Sử | Dashboard
+- ✨ **Animations** - Micro-interactions mượt mà
+- 🎯 **Accessibility** - Hỗ trợ keyboard navigation
+
+### � **API & Backend**
+- 📄 **RESTful API** đầy đủ cho CRUD operations
+- 🔄 **Auto-sync** index với MongoDB
+- 🐳 **Docker Support** - Containerization ready
+- ⚡ **Port Fallback** - Tự động tìm port available
+- 🛡️ **Error Handling** - Robust error management
 
 ---
 
-## 🚀 Cài đặt và Chạy
+## 📋 Yêu cầu Hệ Thống
 
-### Cách 1: Sử dụng Docker (Khuyến nghị)
+- **Node.js** >= 16.x
+- **npm** hoặc **yarn**
+- **MongoDB** >= 5.0
+- **Docker** & **Docker Compose** (khuyến nghị)
+- **RAM** >= 4GB (để chạy mượt các tính năng phân tán)
 
+---
+
+## 🚀 Cài Đặt & Chạy
+
+### 🐳 **Cách 1: Sử dụng Docker (Khuyến nghị)**
+
+```bash
 # 1. Clone repository
 git clone https://github.com/tiendat365/flexsearch.git
 cd flexsearch
 
-# 2. Khởi động MongoDB bằng Docker
+# 2. Khởi động MongoDB với Docker
 docker-compose up -d
 
 # 3. Cài đặt dependencies
@@ -45,8 +76,95 @@ npm install
 
 # 4. Chạy server
 npm start
+```
 
-Server sẽ chạy tại http://localhost:5000 (hoặc port tiếp theo nếu 5000 đã bận)
+### 💻 **Cách 2: MongoDB Local**
+
+```bash
+# 1. Clone repository
+git clone https://github.com/tiendat365/flexsearch.git
+cd flexsearch
+
+# 2. Cài đặt và khởi động MongoDB local
+# Ubuntu/Debian:
+sudo systemctl start mongod
+
+# macOS:
+brew services start mongodb-community
+
+# Windows: Khởi động MongoDB service
+
+# 3. Cài đặt dependencies
+npm install
+
+# 4. Tạo file .env (tùy chọn)
+echo "MONGODB_URI=mongodb://localhost:27017/flexsearch" > .env
+echo "PORT=5000" >> .env
+
+# 5. Chạy server
+npm start
+```
+
+**Server sẽ chạy tại:** 
+- 🌐 **Primary:** http://localhost:5000 
+- 🔄 **Fallback:** Port tiếp theo nếu 5000 bận (5001, 5002, ...)
+
+---
+
+## 📱 Cách Sử Dụng
+
+### 🔍 **Tab Tìm Kiếm**
+1. Nhập từ khóa vào ô tìm kiếm
+2. Xem gợi ý auto-complete real-time
+3. Chọn kết quả hoặc nhấn Enter
+4. Xem kết quả được highlight đẹp mắt
+
+### 📚 **Tab Lịch Sử**
+1. Xem tất cả tìm kiếm đã thực hiện
+2. Lọc theo thời gian: Hôm nay, Tuần này, Tháng này
+3. Tìm kiếm trong lịch sử
+4. Sắp xếp: Mới nhất, Cũ nhất, Nhiều nhất, A-Z
+5. Tìm lại nhanh hoặc xóa từng mục
+6. Xuất file CSV để backup
+
+### 📊 **Tab Dashboard**
+1. **Bộ Cân Bằng Tải:** Theo dõi trạng thái 3 nodes
+2. **Cache Phân Tán:** Xem hit ratio và memory usage
+3. **Phân Tích Tìm Kiếm:** Từ khóa phổ biến, response time
+4. **Hiệu Suất:** CPU, RAM, Disk I/O real-time
+5. **Nhật Ký:** System logs tự động cập nhật
+
+---
+
+## 🏗️ Kiến Trúc Hệ Thống
+
+```
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│   Frontend      │    │    Backend       │    │    Database     │
+│                 │    │                  │    │                 │
+│ • React-like    │◄──►│ • Node.js        │◄──►│ • MongoDB       │
+│ • Auto-complete │    │ • Express.js     │    │ • FlexSearch    │
+│ • Tab System    │    │ • FlexSearch     │    │ • Index Cache   │
+│ • Dark Mode     │    │ • Load Balancer  │    │                 │
+│ • Responsive    │    │ • Caching        │    │                 │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
+         │                       │                       │
+         └───────────────────────┼───────────────────────┘
+                                 │
+                ┌─────────────────▼──────────────────┐
+                │         Distributed Features       │
+                │                                    │
+                │ • Load Balancing (3+ Nodes)       │
+                │ • Redis Cluster Simulation        │
+                │ • Real-time Monitoring            │
+                │ • Performance Analytics           │
+                │ • Auto-scaling Simulation         │
+                └────────────────────────────────────┘
+```
+
+---
+
+## 📂 Cấu Trúc Dự Án
 
 ### 📊 Truy cập các trang
 
