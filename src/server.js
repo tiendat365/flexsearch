@@ -34,15 +34,109 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Thông tin node instance
-const NODE_ID = process.env.INSTANCE_ID || os.hostname();
-const NODE_NAME = `FlexSearch-${NODE_ID}`;
+const NODE_ID = process.env.NODE_ID || process.env.INSTANCE_ID || os.hostname();
+const NODE_NAME = process.env.NODE_NAME || `FlexSearch-${NODE_ID}`;
 console.log(`🚀 Node instance: ${NODE_NAME} (PID: ${process.pid})`);
+
+// === CẤU HÌNH ĐỒNG BỘ CLUSTER ===
+const CLUSTER_NODES = [
+    { id: 'node-1', name: 'Máy-1 (Chính)', port: 5501 },
+    { id: 'node-2', name: 'Máy-2', port: 5502 },
+    { id: 'node-3', name: 'Máy-3', port: 5503 }
+];
+
+// Lấy danh sách các node khác (không bao gồm node hiện tại)
+const OTHER_NODES = CLUSTER_NODES.filter(node => node.id !== NODE_ID);
+
+console.log(`🔗 Node hiện tại: ${NODE_ID} trên port ${PORT}`);
+console.log(`🌐 Sẽ đồng bộ với ${OTHER_NODES.length} node khác:`, OTHER_NODES.map(n => `${n.id}:${n.port}`).join(', '));
 
 // === CẤU HÌNH MIDDLEWARE ===
 app.use(cors());
 app.use(express.json());
 // Phục vụ các tệp tĩnh (HTML, CSS, JS phía client) từ thư mục 'public'
 app.use(express.static('public'));
+
+// === FUNCTIONS ĐỒNG BỘ DỮ LIỆU GIỮA CÁC NODE ===
+const axios = require('axios');
+
+// Gửi thông báo đồng bộ đến các node khác
+async function syncToOtherNodes(action, data) {
+    const promises = OTHER_NODES.map(async (node) => {
+        try {
+            const response = await axios.post(`http://localhost:${node.port}/api/sync`, {
+                action,        // 'create', 'update', 'delete'
+                data,          // dữ liệu cần đồng bộ
+                sourceNode: NODE_ID,
+                timestamp: Date.now()
+            }, {
+                timeout: 3000,  // Timeout 3 giây
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Sync-Source': NODE_ID
+                }
+            });
+            console.log(`✅ Đồng bộ ${action} thành công tới ${node.id}:${node.port}`);
+            return { node: node.id, success: true };
+        } catch (error) {
+            console.warn(`⚠️ Không thể đồng bộ tới ${node.id}:${node.port} - ${error.message}`);
+            return { node: node.id, success: false, error: error.message };
+        }
+    });
+
+    const results = await Promise.allSettled(promises);
+    const successCount = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
+    console.log(`🔄 Đồng bộ hoàn tất: ${successCount}/${OTHER_NODES.length} node thành công`);
+    return results;
+}
+
+// Xử lý thông báo đồng bộ từ node khác
+async function handleSyncMessage(action, data, sourceNode) {
+    try {
+        console.log(`📨 Nhận thông báo đồng bộ ${action} từ ${sourceNode}`);
+        
+        switch (action) {
+            case 'create':
+                // Thêm document vào DB và index (không gửi lại sync)
+                const newDoc = new Document(data);
+                await newDoc.save();
+                index.add(newDoc.toJSON());
+                console.log(`➕ Đã đồng bộ thêm document: ${data.title}`);
+                break;
+                
+            case 'update':
+                // Cập nhật document trong DB và index
+                const updatedDoc = await Document.findByIdAndUpdate(data._id, data, { new: true });
+                if (updatedDoc) {
+                    index.update(updatedDoc.toJSON());
+                    console.log(`🔄 Đã đồng bộ cập nhật document: ${data.title}`);
+                }
+                break;
+                
+            case 'delete':
+                // Xóa document từ DB và index
+                await Document.findByIdAndDelete(data._id);
+                index.remove(data._id);
+                console.log(`🗑️ Đã đồng bộ xóa document ID: ${data._id}`);
+                break;
+                
+            case 'search_history':
+                // Đồng bộ lịch sử tìm kiếm
+                const searchRecord = new SearchHistory(data);
+                await searchRecord.save();
+                console.log(`🔍 Đã đồng bộ lịch sử tìm kiếm: "${data.query}" từ ${sourceNode}`);
+                break;
+                
+            default:
+                console.warn(`⚠️ Action không hỗ trợ: ${action}`);
+        }
+        
+        return true;
+    } catch (error) {
+        console.error(`❌ Lỗi xử lý đồng bộ ${action}:`, error);
+        return false;
+    }
+}
 
 // === KẾT NỐI VỚI MONGODB ===
 // Sử dụng chuỗi kết nối từ file .env
@@ -52,6 +146,23 @@ const documentSchema = new mongoose.Schema({
     content: { type: String, required: true }
 }, { timestamps: true }); // Thêm timestamps để biết khi nào tài liệu được tạo/cập nhật
 const Document = mongoose.model('Document', documentSchema);
+
+// Schema cho lịch sử tìm kiếm
+const searchHistorySchema = new mongoose.Schema({
+    query: { type: String, required: true, trim: true },
+    nodeId: { type: String, required: true }, // Node nào thực hiện tìm kiếm
+    nodeName: { type: String },
+    resultCount: { type: Number, default: 0 }, // Số kết quả tìm được
+    userAgent: { type: String }, // Thông tin browser/client
+    ipAddress: { type: String } // IP address (nếu có)
+}, { timestamps: true });
+
+// Index để tối ưu hóa truy vấn
+searchHistorySchema.index({ query: 1 });
+searchHistorySchema.index({ nodeId: 1 });
+searchHistorySchema.index({ createdAt: -1 });
+
+const SearchHistory = mongoose.model('SearchHistory', searchHistorySchema);
 
 // Danh sách các từ dừng phổ biến trong tiếng Việt
 const vietnameseStopwords = [
@@ -207,6 +318,34 @@ app.get('/api/search', cacheMiddleware, async (req, res) => {
       }
     }
     
+    // 🔍 LưU LỊCH SỬ TÌM KIẾM VÀ ĐỒNG BỘ
+    const searchHistoryData = {
+      query: query.toLowerCase().trim(),
+      nodeId: NODE_ID,
+      nodeName: NODE_NAME,
+      resultCount: results.length,
+      userAgent: req.headers['user-agent'] || 'Unknown',
+      ipAddress: req.ip || req.connection.remoteAddress || 'Unknown'
+    };
+
+    // Lưu lịch sử tìm kiếm (không chờ kết quả)
+    const saveSearchHistory = async () => {
+      try {
+        const searchRecord = new SearchHistory(searchHistoryData);
+        await searchRecord.save();
+        console.log(`📝 Đã lưu lịch sử tìm kiếm: "${query}"`);
+        
+        // Đồng bộ lịch sử tìm kiếm tới các node khác
+        if (!req.headers['x-sync-source']) {
+          syncToOtherNodes('search_history', searchHistoryData).catch(console.error);
+        }
+      } catch (error) {
+        console.error('Lỗi lưu lịch sử tìm kiếm:', error);
+      }
+    };
+    
+    saveSearchHistory(); // Chạy async không chờ
+
     res.json(response);
     } catch (error) {
         console.error("Lỗi API Search:", error);
@@ -252,6 +391,11 @@ app.post('/api/documents', async (req, res) => {
         index.add(newDoc.toJSON());
         console.log(`📝 Đã thêm tài liệu "${title}" vào DB và Index.`);
 
+        // 🔄 ĐỒNG BỘ tới các node khác (không chờ kết quả)
+        if (!req.headers['x-sync-source']) { // Chỉ sync nếu không phải từ node khác
+            syncToOtherNodes('create', newDoc.toJSON()).catch(console.error);
+        }
+
     } catch (error) {
         console.error("Lỗi API Add Document:", error);
         res.status(500).json({ error: "Lỗi máy chủ khi thêm tài liệu" });
@@ -272,6 +416,11 @@ app.put('/api/documents/:id', async (req, res) => {
         index.update(updatedDoc.toJSON());
         console.log(`🔄 Đã cập nhật tài liệu "${updatedDoc.title}" trong DB và Index.`);
 
+        // 🔄 ĐỒNG BỘ tới các node khác (không chờ kết quả)
+        if (!req.headers['x-sync-source']) { // Chỉ sync nếu không phải từ node khác
+            syncToOtherNodes('update', updatedDoc.toJSON()).catch(console.error);
+        }
+
     } catch (error) {
         console.error("Lỗi API Update Document:", error);
         res.status(500).json({ error: "Lỗi máy chủ khi cập nhật tài liệu" });
@@ -291,9 +440,146 @@ app.delete('/api/documents/:id', async (req, res) => {
         index.remove(req.params.id);
         console.log(`🗑️ Đã xóa tài liệu ID "${req.params.id}" khỏi DB và Index.`);
 
+        // 🔄 ĐỒNG BỘ tới các node khác (không chờ kết quả)
+        if (!req.headers['x-sync-source']) { // Chỉ sync nếu không phải từ node khác
+            syncToOtherNodes('delete', { _id: req.params.id, title: deletedDoc.title }).catch(console.error);
+        }
+
     } catch (error) {
         console.error("Lỗi API Delete Document:", error);
         res.status(500).json({ error: "Lỗi máy chủ khi xóa tài liệu" });
+    }
+});
+
+// 🔄 API ĐỒNG BỘ DỮ LIỆU GIỮA CÁC NODE
+app.post('/api/sync', async (req, res) => {
+    try {
+        const { action, data, sourceNode, timestamp } = req.body;
+        
+        // Kiểm tra tính hợp lệ của request
+        if (!action || !data || !sourceNode) {
+            return res.status(400).json({ 
+                error: "Thiếu thông tin đồng bộ", 
+                required: ["action", "data", "sourceNode"] 
+            });
+        }
+
+        // Tránh đồng bộ từ chính mình
+        if (sourceNode === NODE_ID) {
+            return res.status(200).json({ message: "Bỏ qua đồng bộ từ chính mình" });
+        }
+
+        // Xử lý thông báo đồng bộ
+        const success = await handleSyncMessage(action, data, sourceNode);
+        
+        if (success) {
+            res.status(200).json({ 
+                message: `Đồng bộ ${action} thành công`, 
+                node: NODE_ID,
+                timestamp: Date.now()
+            });
+        } else {
+            res.status(500).json({ 
+                error: `Lỗi xử lý đồng bộ ${action}`,
+                node: NODE_ID 
+            });
+        }
+
+    } catch (error) {
+        console.error("Lỗi API Sync:", error);
+        res.status(500).json({ 
+            error: "Lỗi máy chủ khi xử lý đồng bộ",
+            details: error.message 
+        });
+    }
+});
+
+// 📊 API THỐNG KÊ LỊCH SỬ TÌM KIẾM
+app.get('/api/search/stats', async (req, res) => {
+    try {
+        const { node, limit = 10, days = 7 } = req.query;
+        const daysAgo = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+        
+        // Query filter
+        const filter = { createdAt: { $gte: daysAgo } };
+        if (node && node !== 'all') {
+            filter.nodeId = node;
+        }
+
+        // Thống kê tổng quan
+        const totalSearches = await SearchHistory.countDocuments(filter);
+        const todaySearches = await SearchHistory.countDocuments({
+            ...filter,
+            createdAt: { $gte: new Date().setHours(0, 0, 0, 0) }
+        });
+        
+        // Top từ khóa tìm kiếm nhiều nhất
+        const topQueries = await SearchHistory.aggregate([
+            { $match: filter },
+            { $group: { _id: '$query', count: { $sum: 1 }, lastSearched: { $max: '$createdAt' } } },
+            { $sort: { count: -1 } },
+            { $limit: parseInt(limit) }
+        ]);
+
+        // Thống kê theo node
+        const nodeStats = await SearchHistory.aggregate([
+            { $match: filter },
+            { $group: { 
+                _id: { nodeId: '$nodeId', nodeName: '$nodeName' }, 
+                count: { $sum: 1 },
+                avgResults: { $avg: '$resultCount' }
+            }},
+            { $sort: { count: -1 } }
+        ]);
+
+        // Thống kê theo ngày (7 ngày gần nhất)
+        const dailyStats = await SearchHistory.aggregate([
+            { $match: filter },
+            {
+                $group: {
+                    _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+                    count: { $sum: 1 },
+                    uniqueQueries: { $addToSet: '$query' }
+                }
+            },
+            {
+                $project: {
+                    date: '$_id',
+                    count: 1,
+                    uniqueQueries: { $size: '$uniqueQueries' }
+                }
+            },
+            { $sort: { date: -1 } },
+            { $limit: parseInt(days) }
+        ]);
+
+        res.json({
+            period: `${days} ngày gần nhất`,
+            summary: {
+                totalSearches,
+                todaySearches,
+                averagePerDay: Math.round(totalSearches / days),
+                nodes: nodeStats.length
+            },
+            topQueries: topQueries.map(q => ({
+                query: q._id,
+                count: q.count,
+                lastSearched: q.lastSearched
+            })),
+            nodeStats: nodeStats.map(n => ({
+                nodeId: n._id.nodeId,
+                nodeName: n._id.nodeName,
+                searchCount: n.count,
+                avgResults: Math.round(n.avgResults * 10) / 10
+            })),
+            dailyStats: dailyStats.reverse(),
+            currentNode: NODE_ID,
+            timestamp: new Date().toISOString()
+        });
+
+    } catch (error) {
+        console.error('Lỗi API Search Stats:', error);
+        res.status(500).json({ error: 'Lỗi máy chủ khi lấy thống kê tìm kiếm' });
     }
 });
 

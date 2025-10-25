@@ -4,7 +4,7 @@
       "name": "flexsearch-node1",
       "script": "src/server.js",
       "env": {
-        "PORT": 3001,
+        "PORT": 5501,
         "NODE_ID": "node-1",
         "NODE_NAME": "Máy-1 (Chính)",
         "MONGO_URL": "mongodb://localhost:27017/flexsearch"
@@ -14,7 +14,7 @@
       "name": "flexsearch-node2", 
       "script": "src/server.js",
       "env": {
-        "PORT": 3002,
+        "PORT": 5502,
         "NODE_ID": "node-2", 
         "NODE_NAME": "Máy-2",
         "MONGO_URL": "mongodb://localhost:27017/flexsearch"
@@ -24,7 +24,7 @@
       "name": "flexsearch-node3",
       "script": "src/server.js", 
       "env": {
-        "PORT": 3003,
+        "PORT": 5503,
         "NODE_ID": "node-3",
         "NODE_NAME": "Máy-3",
         "MONGO_URL": "mongodb://localhost:27017/flexsearch"
