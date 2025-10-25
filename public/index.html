@@ -1044,6 +1044,7 @@
         }
 
         .logs-container {
+            display: none; /* Ẩn nhật ký hệ thống */
             background: var(--container-bg-glass);
             backdrop-filter: blur(20px);
             border: 1px solid var(--border-color);
@@ -1459,24 +1460,24 @@
 <script type="module">
 
     // ===============================
-    // === TAB MANAGEMENT SYSTEM ===
+    // === HỆ THỐNG QUẢN LÝ TAB ===
     // ===============================
     
     let currentTab = 'search';
 
-    // Tab switching function
+    // Hàm chuyển đổi tab
     window.switchTab = function(tabName) {
-        // Remove active class from all tabs and content
+        // Xóa class active khỏi tất cả tab và nội dung
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
         document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
         
-        // Add active class to selected tab and content
+        // Thêm class active cho tab và nội dung được chọn
         document.getElementById(tabName + '-tab').classList.add('active');
         document.getElementById(tabName + '-content').classList.add('active');
         
         currentTab = tabName;
         
-        // If switching to dashboard, initialize or refresh it
+        // Nếu chuyển sang dashboard, khởi tạo hoặc làm mới nó
         if (tabName === 'dashboard') {
             if (typeof initializeDashboard === 'function') {
                 setTimeout(() => {
@@ -1486,42 +1487,42 @@
             }
         }
         
-        // If switching to history, refresh history display
+        // Nếu chuyển sang lịch sử, làm mới hiển thị lịch sử
         if (tabName === 'history') {
             refreshHistoryDisplay();
         }
         
-        // Save current tab to localStorage
+        // Lưu tab hiện tại vào localStorage
         localStorage.setItem('activeTab', tabName);
     };
 
-    // Initialize tabs on page load
+    // Khởi tạo tabs khi trang được tải
     function initializeTabs() {
         const savedTab = localStorage.getItem('activeTab') || 'search';
         switchTab(savedTab);
     }
 
     // ===============================
-    // === SEARCH HISTORY SYSTEM ===
+    // === HỆ THỐNG LỊCH SỬ TÌM KIẾM ===
     // ===============================
     
     let searchHistory = JSON.parse(localStorage.getItem('searchHistory')) || [];
     let currentPage = 1;
     const itemsPerPage = 10;
 
-    // Add search to history
+    // Thêm tìm kiếm vào lịch sử
     function addToSearchHistory(query, resultsCount, responseTime) {
         const now = new Date();
         const existingIndex = searchHistory.findIndex(item => item.query.toLowerCase() === query.toLowerCase());
         
         if (existingIndex !== -1) {
-            // Update existing entry
+            // Cập nhật mục đã tồn tại
             searchHistory[existingIndex].count++;
             searchHistory[existingIndex].lastSearched = now.toISOString();
             searchHistory[existingIndex].resultsCount = resultsCount;
             searchHistory[existingIndex].responseTime = responseTime;
         } else {
-            // Add new entry
+            // Thêm mục mới
             searchHistory.unshift({
                 id: Date.now(),
                 query: query,
@@ -1533,21 +1534,21 @@
             });
         }
         
-        // Keep only last 1000 searches
+        // Chỉ giữ lại 1000 tìm kiếm gần nhất
         if (searchHistory.length > 1000) {
             searchHistory = searchHistory.slice(0, 1000);
         }
         
-        // Save to localStorage
+        // Lưu vào localStorage
         localStorage.setItem('searchHistory', JSON.stringify(searchHistory));
         
-        // Update history display if on history tab
+        // Cập nhật hiển thị lịch sử nếu đang ở tab lịch sử
         if (currentTab === 'history') {
             refreshHistoryDisplay();
         }
     }
 
-    // Clear all search history
+    // Xóa tất cả lịch sử tìm kiếm
     window.clearSearchHistory = function() {
         if (confirm('Bạn có chắc chắn muốn xóa toàn bộ lịch sử tìm kiếm?')) {
             searchHistory = [];
@@ -1556,7 +1557,7 @@
         }
     };
 
-    // Export search history
+    // Xuất lịch sử tìm kiếm
     window.exportSearchHistory = function() {
         if (searchHistory.length === 0) {
             alert('Không có lịch sử để xuất!');
@@ -1579,38 +1580,38 @@
         document.body.removeChild(link);
     };
 
-    // Delete single history item
+    // Xóa một mục lịch sử
     window.deleteHistoryItem = function(id) {
         searchHistory = searchHistory.filter(item => item.id !== id);
         localStorage.setItem('searchHistory', JSON.stringify(searchHistory));
         refreshHistoryDisplay();
     };
 
-    // Search again from history
+    // Tìm kiếm lại từ lịch sử
     window.searchAgain = function(query) {
-        // Switch to search tab
+        // Chuyển sang tab tìm kiếm
         switchTab('search');
         
-        // Set the query in search input
+        // Đặt từ khóa vào ô tìm kiếm
         const searchInput = document.getElementById('userinput');
         if (searchInput) {
             searchInput.value = query;
             searchInput.focus();
             
-            // Trigger search
+            // Kích hoạt tìm kiếm
             setTimeout(() => {
                 performSearch(query);
             }, 100);
         }
     };
 
-    // Refresh history display
+    // Làm mới hiển thị lịch sử
     function refreshHistoryDisplay() {
         updateHistoryStats();
         displayFilteredHistory();
     }
 
-    // Update history statistics
+    // Cập nhật thống kê lịch sử
     function updateHistoryStats() {
         const totalSearches = searchHistory.reduce((sum, item) => sum + item.count, 0);
         const uniqueQueries = searchHistory.length;
@@ -1624,7 +1625,7 @@
         document.getElementById('today-searches').textContent = todaySearches.toLocaleString();
     }
 
-    // Display filtered and sorted history
+    // Hiển thị lịch sử đã lọc và sắp xếp
     function displayFilteredHistory() {
         const searchFilter = document.getElementById('history-search')?.value.toLowerCase() || '';
         const timeFilter = document.getElementById('history-filter')?.value || 'all';
@@ -1632,7 +1633,7 @@
         
         let filteredHistory = [...searchHistory];
         
-        // Apply search filter
+        // Áp dụng bộ lọc tìm kiếm
         if (searchFilter) {
             filteredHistory = filteredHistory.filter(item => 
                 item.query.toLowerCase().includes(searchFilter)
@@ -1662,7 +1663,7 @@
                 break;
         }
         
-        // Apply sorting
+        // Áp dụng sắp xếp
         switch (sortBy) {
             case 'newest':
                 filteredHistory.sort((a, b) => new Date(b.lastSearched) - new Date(a.lastSearched));
@@ -1681,7 +1682,7 @@
         displayHistoryPage(filteredHistory);
     }
 
-    // Display history page
+    // Hiển thị trang lịch sử
     function displayHistoryPage(filteredHistory) {
         const historyList = document.getElementById('history-list');
         const startIndex = (currentPage - 1) * itemsPerPage;
@@ -1753,7 +1754,7 @@
         pagination.style.display = 'flex';
         pageInfo.textContent = `Trang ${currentPage} / ${totalPages}`;
         
-        // Update button states
+        // Cập nhật trạng thái nút
         const prevBtn = pagination.querySelector('.page-btn:first-child');
         const nextBtn = pagination.querySelector('.page-btn:last-child');
         
@@ -1761,7 +1762,7 @@
         nextBtn.disabled = currentPage === totalPages;
     }
 
-    // Change page
+    // Thay đổi trang
     window.changePage = function(direction) {
         const searchFilter = document.getElementById('history-search')?.value.toLowerCase() || '';
         const timeFilter = document.getElementById('history-filter')?.value || 'all';
@@ -1806,7 +1807,7 @@
         }
     };
 
-    // Utility functions
+    // Các hàm tiện ích
     function getTimeAgo(date) {
         const now = new Date();
         const diffMs = now - date;
@@ -1828,7 +1829,7 @@
         return div.innerHTML;
     }
 
-    // Add event listeners for history filters
+    // Thêm event listeners cho bộ lọc lịch sử
     document.addEventListener('DOMContentLoaded', () => {
         const historySearch = document.getElementById('history-search');
         const historyFilter = document.getElementById('history-filter');
@@ -1856,19 +1857,19 @@
         }
     });
 
-    // Enhanced Features:
-    // 1. Instant Search with debouncing
-    // 2. Auto-Complete with smart matching
-    // 3. Contextual Suggestions
-    // 4. Query Cache for performance
-    // 5. Result Highlighting with gradients
-    // 6. Advanced Tokenizer
-    // 7. Encoder optimization
-    // 8. Multi-field Document Index
-    // 9. Intuitive Keyboard Navigation
-    // 10. Dark mode support
-    // 11. Accessibility improvements
-    // 12. Loading states and animations
+    // Tính năng nâng cao:
+    // 1. Tìm kiếm tức thời với debouncing
+    // 2. Tự động hoàn thành với matching thông minh
+    // 3. Gợi ý theo ngữ cảnh
+    // 4. Cache truy vấn để tăng hiệu suất
+    // 5. Làm nổi bật kết quả với gradient
+    // 6. Tokenizer nâng cao
+    // 7. Tối ưu hóa Encoder
+    // 8. Index tài liệu đa trường
+    // 9. Điều hướng bàn phím trực quan
+    // 10. Hỗ trợ chế độ tối
+    // 11. Cải thiện khả năng tiếp cận
+    // 12. Trạng thái loading và animation
 
     const suggestions = document.getElementById("suggestions");
     const autocomplete = document.getElementById("autocomplete");
@@ -1880,7 +1881,7 @@
     let searchCache = new Map();
     let isLoading = false;
 
-    // Theme Management
+    // Quản lý giao diện
     function initTheme() {
         const savedTheme = localStorage.getItem('theme') || 'light';
         document.documentElement.setAttribute('data-theme', savedTheme);
@@ -1893,20 +1894,20 @@
         localStorage.setItem('theme', newTheme);
     };
 
-    // Initialize theme on load
+    // Khởi tạo giao diện khi tải trang
     initTheme();
     
-    // Initialize tabs on load
+    // Khởi tạo tabs khi tải trang
     initializeTabs();
 
-    // Enhanced input handling with better debouncing
+    // Xử lý input nâng cao với debouncing tốt hơn
     userinput.addEventListener("input", handleInput, true);
     userinput.addEventListener("keydown", key_handler, true);
     userinput.addEventListener("focus", handleFocus, true);
     userinput.addEventListener("blur", handleBlur, true);
     suggestions.addEventListener("click", accept_suggestion, true);
 
-    // Hide suggestions when clicking outside
+    // Ẩn gợi ý khi click bên ngoài
     document.addEventListener("click", (event) => {
         if (!event.target.closest('.search-container')) {
             hide_suggestions();
@@ -1927,7 +1928,7 @@
             return;
         }
 
-        // Show loading state
+        // Hiển thị trạng thái đang tải
         setLoadingState(true);
 
         debounceTimer = setTimeout(() => {
@@ -1977,12 +1978,12 @@
             return;
         }
 
-        // Check cache first
+        // Kiểm tra cache trước
         if (searchCache.has(query)) {
             results = searchCache.get(query);
             displayResults();
             
-            // Add to history even for cached results
+            // Thêm vào lịch sử ngay cả kết quả từ cache
             const responseTime = Date.now() - startTime;
             addToSearchHistory(query, results.length, responseTime);
             return;
@@ -1992,16 +1993,17 @@
             const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
             if (!response.ok) throw new Error('Search failed');
             
-            results = await response.json();
+            const searchResponse = await response.json();
+            results = searchResponse.results || searchResponse; // Handle both formats
             const responseTime = Date.now() - startTime;
             
-            // Add to search history
+            // Thêm vào lịch sử tìm kiếm
             addToSearchHistory(query, results.length, responseTime);
             
-            // Cache results
+            // Lưu kết quả vào cache
             searchCache.set(query, results);
             
-            // Limit cache size
+            // Giới hạn kích thước cache
             if (searchCache.size > 50) {
                 const firstKey = searchCache.keys().next().value;
                 searchCache.delete(firstKey);
@@ -2017,7 +2019,7 @@
         }
     }
 
-    // Global search function for external calls
+    // Hàm tìm kiếm toàn cục cho các lời gọi bên ngoài
     window.performSearch = async function(query) {
         if (query) {
             userinput.value = query;
@@ -2036,7 +2038,7 @@
 
         const fragment = document.createDocumentFragment();
         
-        // Add search stats
+        // Thêm thống kê tìm kiếm
         if (results.length > 0) {
             const statsDiv = document.createElement("div");
             statsDiv.className = 'search-stats';
@@ -2044,7 +2046,7 @@
             fragment.appendChild(statsDiv);
         }
 
-        // Add results
+        // Thêm kết quả
         results.forEach((resultItem, index) => {
             const entry = document.createElement("div");
             entry.setAttribute('role', 'option');
@@ -2143,7 +2145,7 @@
         iterate = -1;
         userinput.setAttribute('aria-expanded', 'false');
         
-        // Clear all selections
+        // Xóa tất cả lựa chọn
         const suggestionItems = suggestions.children;
         for (const item of suggestionItems) {
             item.classList.remove("selected");
@@ -2154,7 +2156,7 @@
     function select_result(index) {
         const suggestionItems = suggestions.children;
         
-        // Clear previous selections
+        // Xóa các lựa chọn trước
         for (const item of suggestionItems) {
             item.classList.remove("selected");
             item.setAttribute('aria-selected', 'false');
@@ -2182,7 +2184,7 @@
         results = [];
         userinput.focus();
         
-        // Add subtle feedback
+        // Thêm phản hồi tinh tế
         userinput.style.transform = 'scale(1.02)';
         setTimeout(() => {
             userinput.style.transform = '';
@@ -2200,7 +2202,7 @@
             userinput.value = selectedResult.doc.title;
             hide_suggestions();
             
-            // Add feedback animation
+            // Thêm animation phản hồi
             userinput.style.transform = 'scale(1.02)';
             setTimeout(() => {
                 userinput.style.transform = '';
@@ -2225,7 +2227,7 @@
 
         hide_suggestions();
 
-        // Add click feedback
+        // Thêm phản hồi click
         target.style.transform = 'scale(0.98)';
         setTimeout(() => {
             target.style.transform = '';
@@ -2234,13 +2236,13 @@
         return false;
     }
 
-    // Performance optimization: Preconnect to API
+    // Tối ưu hiệu suất: Kết nối trước với API
     const link = document.createElement('link');
     link.rel = 'preconnect';
     link.href = window.location.origin;
     document.head.appendChild(link);
 
-    // Add keyboard shortcuts info
+    // Thêm thông tin phím tắt
     const shortcutsInfo = document.createElement('div');
     shortcutsInfo.className = 'sr-only';
     shortcutsInfo.setAttribute('aria-live', 'polite');
@@ -2254,7 +2256,7 @@
         }
     });
 
-    // Add focus ring for keyboard navigation
+    // Thêm focus ring cho điều hướng bàn phím
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Tab') {
             document.body.classList.add('keyboard-navigation');
@@ -2269,7 +2271,7 @@
     // === DISTRIBUTED SYSTEM DASHBOARD ===
     // ===================================
 
-    // Dashboard variables
+    // Biến dashboard
     let dashboardMetrics = {
         activeNodes: 3,
         totalRequests: 1247,
@@ -2287,7 +2289,7 @@
     let performanceData = [];
     let logEntries = [];
 
-    // Global dashboard functions
+    // Các hàm dashboard toàn cục
     window.refreshDashboard = function() {
         console.log("🔄 Đang làm mới bảng điều khiển...");
         simulateRealTimeUpdates();
@@ -2302,9 +2304,9 @@
         addLogEntry('info', 'HỆ_THỐNG', 'Đã xóa nhật ký');
     };
 
-    // Simulate real-time data updates
+    // Mô phỏng cập nhật dữ liệu thời gian thực
     function simulateRealTimeUpdates() {
-        // Simulate metric changes
+        // Mô phỏng thay đổi metric
         dashboardMetrics.totalRequests += Math.floor(Math.random() * 10) + 1;
         dashboardMetrics.cacheHitRatio = Math.max(75, Math.min(95, dashboardMetrics.cacheHitRatio + (Math.random() - 0.5) * 5));
         dashboardMetrics.searchesPerMin = Math.max(20, Math.min(80, dashboardMetrics.searchesPerMin + (Math.random() - 0.5) * 10));
@@ -2313,7 +2315,7 @@
         dashboardMetrics.ramUsage = Math.max(40, Math.min(90, dashboardMetrics.ramUsage + (Math.random() - 0.5) * 8));
         dashboardMetrics.diskIO = Math.max(5, Math.min(50, dashboardMetrics.diskIO + (Math.random() - 0.5) * 5));
 
-        // Add performance data point
+        // Thêm điểm dữ liệu hiệu suất
         performanceData.push({
             timestamp: Date.now(),
             cpu: dashboardMetrics.cpuUsage,
@@ -2326,13 +2328,13 @@
         }
     }
 
-    // Update all dashboard metrics
+    // Cập nhật tất cả metric dashboard
     function updateAllMetrics() {
-        // Update Load Balancer metrics
+        // Cập nhật metric Load Balancer
         document.getElementById('active-nodes').textContent = dashboardMetrics.activeNodes;
         document.getElementById('total-requests').textContent = dashboardMetrics.totalRequests.toLocaleString();
 
-        // Update Cache metrics
+        // Cập nhật metric Cache
         document.getElementById('cache-hit-ratio').textContent = Math.round(dashboardMetrics.cacheHitRatio) + '%';
         document.getElementById('total-keys').textContent = dashboardMetrics.totalKeys.toLocaleString();
         document.getElementById('memory-usage').textContent = dashboardMetrics.memoryUsage.toFixed(1) + ' GB';
@@ -2343,12 +2345,12 @@
             performanceFill.style.width = Math.round(dashboardMetrics.cacheHitRatio) + '%';
         }
 
-        // Update Search Analytics
+        // Cập nhật Analytics tìm kiếm
         document.getElementById('searches-per-min').textContent = Math.round(dashboardMetrics.searchesPerMin);
         document.getElementById('avg-response-time').textContent = Math.round(dashboardMetrics.avgResponseTime) + 'ms';
         document.getElementById('success-rate').textContent = dashboardMetrics.successRate.toFixed(1) + '%';
 
-        // Update System Performance
+        // Cập nhật hiệu suất hệ thống
         document.getElementById('cpu-usage').textContent = Math.round(dashboardMetrics.cpuUsage) + '%';
         document.getElementById('ram-usage').textContent = Math.round(dashboardMetrics.ramUsage) + '%';
         document.getElementById('disk-io').textContent = Math.round(dashboardMetrics.diskIO) + ' MB/s';
@@ -2421,7 +2423,7 @@
         updateLogsDisplay();
     }
 
-    // Update logs display
+    // Cập nhật hiển thị logs
     function updateLogsDisplay() {
         const logsContent = document.getElementById('logs-content');
         logsContent.innerHTML = '';
@@ -2497,14 +2499,14 @@
         // Add log entry
         addLogEntry('success', 'TÌM_KIẾM', `Hoàn thành tìm kiếm: "${randomQuery}" - tìm thấy ${resultsCount} kết quả trong ${responseTime}ms`);
 
-        // Simulate cache events
+        // Mô phỏng sự kiện cache
         if (Math.random() > 0.3) {
             setTimeout(() => {
                 addLogEntry('info', 'CACHE', `Cache trúng cho từ khóa: "${randomQuery}" - phản hồi ${responseTime}ms`);
             }, 500);
         }
 
-        // Simulate load balancer events
+        // Mô phỏng sự kiện load balancer
         const nodes = ['Máy-1', 'Máy-2', 'Máy-3'];
         const randomNode = nodes[Math.floor(Math.random() * nodes.length)];
         setTimeout(() => {
@@ -2512,7 +2514,7 @@
         }, 200);
     }
 
-    // Simulate health check events
+    // Mô phỏng sự kiện kiểm tra sức khỏe
     function simulateHealthCheck() {
         const issues = [
             'Máy-3 phát hiện sử dụng bộ nhớ cao: 85%',
@@ -2528,11 +2530,11 @@
         addLogEntry(type, 'KIỂM_TRA_SỨC_KHỎE', randomIssue);
     }
 
-    // Initialize dashboard
+    // Khởi tạo dashboard
     function initializeDashboard() {
         updateAllMetrics();
         
-        // Add initial log entries
+        // Thêm các mục log ban đầu
         addLogEntry('success', 'HỆ_THỐNG', 'Hệ thống phân tán khởi động thành công');
         addLogEntry('info', 'CÂN_BẰNG_TẢI', 'Bộ cân bằng tải đã khởi tạo với 3 máy chủ');
         addLogEntry('info', 'CACHE', 'Redis cluster đã kết nối và sẵn sàng');

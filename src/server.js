@@ -4,10 +4,39 @@ const fs = require('fs').promises;
 const mongoose = require('mongoose');
 require('dotenv').config(); 
 const FlexSearch = require('flexsearch');
+const os = require('os');
+
+// Redis client (optional - sẽ fail gracefully nếu không có Redis)
+let redisClient = null;
+if (process.env.REDIS_URL) {
+    try {
+        const redis = require('redis');
+        redisClient = redis.createClient({ url: process.env.REDIS_URL });
+        redisClient.on('error', (err) => {
+            console.log('⚠️ Redis không khả dụng, chạy không có cache');
+            redisClient = null;
+        });
+        redisClient.connect().catch(() => {
+            console.log('⚠️ Không thể kết nối Redis, chạy không có cache');
+            redisClient = null;
+        });
+        console.log('🔗 Redis client khởi tạo');
+    } catch (error) {
+        console.log('⚠️ Redis không có, chạy không có cache');
+        redisClient = null;
+    }
+} else {
+    console.log('ℹ️ Chạy mà không có Redis cache');
+}
 // === KHỞI TẠO ỨNG DỤNG EXPRESS ===
 const app = express();
 // Sử dụng PORT từ file .env hoặc mặc định là 5000
 const PORT = process.env.PORT || 5000;
+
+// Thông tin node instance
+const NODE_ID = process.env.INSTANCE_ID || os.hostname();
+const NODE_NAME = `FlexSearch-${NODE_ID}`;
+console.log(`🚀 Node instance: ${NODE_NAME} (PID: ${process.pid})`);
 
 // === CẤU HÌNH MIDDLEWARE ===
 app.use(cors());
@@ -76,6 +105,39 @@ async function populateIndex() {
 }
 
 // ===================================
+// === DISTRIBUTED SYSTEM MIDDLEWARE ===
+// ===================================
+
+// Cache middleware cho search
+async function cacheMiddleware(req, res, next) {
+    if (!redisClient) return next();
+    
+    try {
+        const query = req.query.q || req.query.title || req.query.content;
+        if (!query) return next();
+        
+        const cacheKey = `search:${Buffer.from(query.toLowerCase()).toString('base64')}`;
+        const cached = await redisClient.get(cacheKey);
+        
+        if (cached) {
+            const result = JSON.parse(cached);
+            result.fromCache = true;
+            result.nodeId = NODE_ID;
+            result.nodeName = NODE_NAME;
+            console.log(`🎯 Cache HIT for query: "${query}" on ${NODE_NAME}`);
+            return res.json(result);
+        }
+        
+        // Store cache key for later use
+        req.cacheKey = cacheKey;
+        next();
+    } catch (error) {
+        console.error('Cache middleware error:', error);
+        next(); // Fail gracefully
+    }
+}
+
+// ===================================
 // === ĐỊNH NGHĨA CÁC ĐƯỜNG DẪN API ===
 // ===================================
 
@@ -90,8 +152,8 @@ function highlightText(text, query) {
     return text.replace(regex, '<b>$1</b>');
 }
 
-// API Tìm kiếm (dùng Index)
-app.get('/api/search', (req, res) => {
+// API Tìm kiếm (dùng Index + Cache)
+app.get('/api/search', cacheMiddleware, async (req, res) => {
   try {
     const queryParams = req.query;
     const query = queryParams.q || queryParams.title || queryParams.content;
@@ -123,7 +185,29 @@ app.get('/api/search', (req, res) => {
     }
     
     console.log("Returning", results.length, "results");
-    res.json(results);
+    
+    // Prepare response với node info
+    const response = {
+      results,
+      fromCache: false,
+      nodeId: NODE_ID,
+      nodeName: NODE_NAME,
+      timestamp: new Date().toISOString(),
+      query: query,
+      totalResults: results.length
+    };
+    
+    // Store in cache nếu có Redis
+    if (redisClient && req.cacheKey && results.length > 0) {
+      try {
+        await redisClient.setEx(req.cacheKey, 300, JSON.stringify(response)); // TTL 5 phút
+        console.log(`💾 Cached search results for: "${query}" on ${NODE_NAME}`);
+      } catch (cacheError) {
+        console.error('Cache store error:', cacheError);
+      }
+    }
+    
+    res.json(response);
     } catch (error) {
         console.error("Lỗi API Search:", error);
         res.status(500).json({ error: "Lỗi máy chủ khi tìm kiếm" });
@@ -214,20 +298,52 @@ app.delete('/api/documents/:id', async (req, res) => {
 });
 
 // API Kiểm tra "sức khỏe" của ứng dụng và DB
-app.get('/api/health', (req, res) => {
-    const dbState = mongoose.connection.readyState;
-    // readyState: 0 = disconnected, 1 = connected, 2 = connecting, 3 = disconnecting
-    const isConnected = dbState === 1;
+app.get('/api/health', async (req, res) => {
+    try {
+        const dbState = mongoose.connection.readyState;
+        const isConnected = dbState === 1;
+        
+        // Kiểm tra Redis connection
+        let redisStatus = 'disconnected';
+        if (redisClient) {
+            try {
+                await redisClient.ping();
+                redisStatus = 'connected';
+            } catch (err) {
+                redisStatus = 'error';
+            }
+        }
 
-    if (isConnected) {
-        res.status(200).json({
-            status: 'UP',
-            db: 'connected'
-        });
-    } else {
-        res.status(503).json({ // 503 Service Unavailable
-            status: 'DOWN',
-            db: `state: ${mongoose.STATES[dbState]}`
+        const health = {
+            status: isConnected ? 'UP' : 'DOWN',
+            timestamp: new Date().toISOString(),
+            node: {
+                id: NODE_ID,
+                name: NODE_NAME,
+                pid: process.pid,
+                uptime: process.uptime(),
+                version: process.version
+            },
+            services: {
+                database: isConnected ? 'connected' : `state: ${mongoose.STATES[dbState]}`,
+                redis: redisStatus,
+                search: index ? 'ready' : 'not-ready'
+            },
+            memory: process.memoryUsage(),
+            loadAverage: os.loadavg(),
+            platform: os.platform()
+        };
+
+        if (isConnected) {
+            res.status(200).json(health);
+        } else {
+            res.status(503).json(health); // 503 Service Unavailable
+        }
+    } catch (error) {
+        res.status(500).json({
+            status: 'ERROR',
+            error: error.message,
+            node: { id: NODE_ID, name: NODE_NAME }
         });
     }
 });
@@ -285,20 +401,37 @@ app.get('/api/dashboard/metrics', (req, res) => {
 });
 
 // Health check endpoint
-app.get('/api/health', (req, res) => {
+app.get('/api/health', async (req, res) => {
     try {
+        // Test Redis connection
+        let redisStatus = 'không-khả-dụng';
+        if (redisClient) {
+            try {
+                await redisClient.ping();
+                redisStatus = 'đã-kết-nối';
+            } catch (redisError) {
+                redisStatus = 'mất-kết-nối';
+            }
+        }
+        
         const health = {
             status: 'khỏe-mạnh',
+            nodeId: NODE_ID,
+            nodeName: NODE_NAME,
+            pid: process.pid,
             timestamp: new Date().toISOString(),
             services: {
                 database: mongoose.connection.readyState === 1 ? 'đã-kết-nối' : 'mất-kết-nối',
                 search: index ? 'sẵn-sàng' : 'chưa-sẵn-sàng',
-                loadBalancer: 'hoạt-động',
-                cache: 'đã-kết-nối'
+                cache: redisStatus,
+                loadBalancer: 'nginx-managed'
             },
             uptime: process.uptime(),
             memory: process.memoryUsage(),
-            version: process.version
+            version: process.version,
+            hostname: os.hostname(),
+            platform: os.platform(),
+            arch: os.arch()
         };
 
         res.json(health);
